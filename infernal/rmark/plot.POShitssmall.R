@@ -1,14 +1,16 @@
-pdf("HitsOnPositives.pdf",width=5,height=5)
+pdf("HitsOnPositivesHighEValue.pdf",width=5,height=5)
 
 myhmmdata <- read.table(file.path("hmmout"), header=T, sep="\t")
 
 #mydata = rbind(myhmmdata, myfpwdata)
 #attach(mydata)
+#min_evalue = 1e-300
+min_evalue = 1e-45
 
 attach(myhmmdata)
 plot(tblastnfpw, phmmert, main="Positive sequence E-values phmmert vs tblastn", 
       cex=0.8, xlab="tblastn - E-value", ylab="phmmert - E-value", col="blue",
-      pch=1, log="xy", xlim=c(1e+2,1e-170), ylim=c(1e+2,1e-170))
+      pch=1, log="xy", xlim=c(1e+2,min_evalue), ylim=c(1e+2,min_evalue))
 
 #positive hit plots
 myhmmconsdata <- read.table(file.path("hmmout"), header=T, sep="\t")
@@ -41,9 +43,10 @@ points(tblastncons, phmmert, col="orange", pch=3)
 #points(tblastncons, phmmert, col="purple", pch=8)
 
 
-segments(1e+2,1e+2, 1e-170, 1e-170, lwd=1, col="pink")
+segments(1e+2,1e+2, min_evalue, min_evalue, lwd=1, col="pink")
 
-legend(1e-100,1e-50,c("phmmert", "tblastn fpw", "tblastn cons"),
+#try to put the legend in the lower right corner of the graph
+legend(10 ^ (log10(min_evalue)*(2/3)),10 ^ (log10(min_evalue)*(1/3)),c("phmmert", "tblastn fpw", "tblastn cons"),
         col=c("blue","red","orange"),
          pch=c(1,2,3))
 

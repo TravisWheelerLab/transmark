@@ -24,10 +24,7 @@ while ($l = <F>) {
    # skip evalues > 100 until phmmert -domE filter fixed
    next  if ($eval > 100);
    # skip evalues < a threshold 
-   next if  ($eval < $eval_min_threshold);
 #   printf("phmmert file %10s %10s\n",$fam,$eval);
-#   $desc = join(" ", @vals[15..30]);
-#   next unless $desc =~ /globin/i;
    
    $hmm_hits{$fam.$famseq} = 0.0+$eval;   
 }
@@ -42,7 +39,6 @@ while ($l = <F>) {
    next if ($fam eq "family");
    next if ($plusminus eq "-");
    # skip evalues < a threshold 
-   next if  ($eval < $eval_min_threshold);
 #   printf("cons file %10s %10s\n",$fam,$eval);
    next if ($fam eq "family");
 #  
@@ -59,7 +55,6 @@ while ($l = <F>) {
    next if ($fam eq "family");
    next if ($plusminus eq "-");
    # skip evalues < a threshold 
-   next if  ($eval < $eval_min_threshold);
 #   printf("fpw file %10s %10s\n",$fam,$eval);
    next if ($fam eq "family");
 #
@@ -80,6 +75,18 @@ if ($ARGV[0] eq "fpw") {
 printf ( "%50s\t%12s\t%12s\t%12s\n", "gi",  "tblastnfpw", "tblastncons", "phmmert");
    
 foreach $k (@gis) {
+   #skip hit if any search tool recoreded an E-Value less
+   #than the threshold; we will not be interested in those
+   next if  ($hmm_hits{$k} < $eval_min_threshold or
+           $fpw_hits{$k} < $eval_min_threshold or
+           $cons_hits{$k} < $eval_min_threshold);
+
+   #if there there was no hit for a particular
+   #tool then give it an E-Value of 100 so 
+   #a placeholder for it; this helps when we plot the hists
+   #If the E-Value is 0 (which it probably won't be becuase
+   #it would have been filtered out by threshold above) give it an
+   #arbitrary E-Value of 1e-300
    if (exists $fpw_hits{$k}){
       $f = $fpw_hits{$k} ? $fpw_hits{$k} : 1e-300 
    }
@@ -100,10 +107,6 @@ foreach $k (@gis) {
    else {
       $h = 100;
    }
-#   $f = $fpw_hits{$k} ? $fpw_hits{$k} : 100;
-#   $c = $cons_hits{$k} ? $cons_hits{$k} : 100;
-#   $h = $hmm_hits{$k}  ? $hmm_hits{$k}  : 100;      
-
 
    printf ( "%50s\t%12g\t%12g\t%12g\n", $k, $f, $c, $h);
 }
