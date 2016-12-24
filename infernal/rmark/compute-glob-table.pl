@@ -10,7 +10,7 @@ if ($ARGV[1] eq "orf") {
   $fpwfile = "tbn.w3.e100.fpw.mer";
 }
 
-$eval_min_threshold = 1e-47;
+$eval_min_threshold = 1e-170;
 
 open F, "<$hmmfile";
 while ($l = <F>) {
@@ -75,38 +75,36 @@ if ($ARGV[0] eq "fpw") {
 printf ( "%50s\t%12s\t%12s\t%12s\n", "gi",  "tblastnfpw", "tblastncons", "phmmert");
    
 foreach $k (@gis) {
-   #skip hit if any search tool recoreded an E-Value less
-   #than the threshold; we will not be interested in those
-   next if  ($hmm_hits{$k} < $eval_min_threshold or
-           $fpw_hits{$k} < $eval_min_threshold or
-           $cons_hits{$k} < $eval_min_threshold);
-
    #if there there was no hit for a particular
    #tool then give it an E-Value of 100 so 
    #a placeholder for it; this helps when we plot the hists
-   #If the E-Value is 0 (which it probably won't be becuase
-   #it would have been filtered out by threshold above) give it an
-   #arbitrary E-Value of 1e-300
    if (exists $fpw_hits{$k}){
-      $f = $fpw_hits{$k} ? $fpw_hits{$k} : 1e-300 
+      $f = $fpw_hits{$k} 
    }
    else {
       $f = 100;
    }
 
    if (exists $cons_hits{$k}) {
-      $c = $cons_hits{$k} ? $cons_hits{$k} : 1e-300
+      $c = $cons_hits{$k}
    }
    else {
       $c = 100;
    }
 
    if (exists $hmm_hits{$k}) {
-      $h = $hmm_hits{$k} ? $hmm_hits{$k} : 1e-300
+      $h = $hmm_hits{$k}
    }
    else {
       $h = 100;
    }
+
+   #skip hit if all search tools found the  hit and any search tool recorded an E-Value less
+   #than the threshold; we will not be interested in those
+   next if (($f < $eval_min_threshold) or
+           ($c < $eval_min_threshold) or
+           ($h < $eval_min_threshold));
+
 
    printf ( "%50s\t%12g\t%12g\t%12g\n", $k, $f, $c, $h);
 }

@@ -67,9 +67,11 @@ wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ /home/um/wshands/i
 #create test to see how close family fpw and cons results are for those that are very different for some fpw
 ##here is the command to create the ratio test file:
 #use + and - to indicate cons better E-Value (+) or fpw better E-Value (-) after sort
-#[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'FNR>1 {min = ($2 < $3) ? $2 : $3; p=($2-$3)/min; printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$3, p) }' consoutmin-170 > ratiotest
-#
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'FNR>1 {min = ($2 < $3) ? $2 : $3; p=($2-$3)/min; printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$3, p) }' consoutmin-170 > ratiotest
+
 ##to sort on the 4th column
-#[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ sort -g -b -t$'\t' -k 4,8 ratiotest | less
-#
-#
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ sort -g -b -t$'\t' -k 4,8 ratiotest | less
+
+#to create log diff in evalues file
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastncons\tphmmert\tlogdiff"} FNR>1 { tblastlog = (log($3)/log(10)); phmmertlog = (log($4)/log(10)); logdiff = (tblastlog < phmmertlog) ? phmmertlog-tblastlog : tblastlog-phmmertlog; printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$3,$4,logdiff) }' hmmoutmin-170 | sort -g -b -t$'\t' -k 4,8  > logevaluediff
+
