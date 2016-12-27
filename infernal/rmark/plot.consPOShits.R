@@ -21,7 +21,7 @@ plot(tblastncons, phmmert, main="Pos seq E-values phmmert vs tblastn cons",
 
 #myconsdata <- read.table(file.path("consout"), header=T, sep="\t")
 #attach(myconsdata)
-#points(tblastncons, phmmert, col="orange", pch=3)
+#points(tblastncons, phmmert, col="orange", pch=2)
 
 segments(1e+2,1e+2, 1e-170, 1e-170, lwd=1, col="pink")
 

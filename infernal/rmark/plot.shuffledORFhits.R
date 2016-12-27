@@ -13,15 +13,18 @@ plot(tblastnfpw, phmmert, main="Shuffled ORF E-values phmmert vs tblastn",
 
 points(tblastncons, phmmert, col="blue", pch=1)
 
-myfpwdata <- read.table(file.path("fpworfout"), header=T, sep="\t")
-attach(myfpwdata)
-points(tblastnfpw, phmmert, col="red", pch=2)
+#myfpwdata <- read.table(file.path("fpworfout"), header=T, sep="\t")
+#attach(myfpwdata)
+#points(tblastnfpw, phmmert, col="red", pch=2)
 
-myconsdata <- read.table(file.path("consorfout"), header=T, sep="\t")
-attach(myconsdata)
-points(tblastncons, phmmert, col="orange", pch=3)
+#myconsdata <- read.table(file.path("consorfout"), header=T, sep="\t")
+#attach(myconsdata)
+#points(tblastncons, phmmert, col="orange", pch=3)
 
 
 segments(1e+2,1e+2, 1e-5, 1e-5, lwd=1, col="pink")
 
-legend(1e+1,1e-4,c("phmmert","tblastn fpw", "tblastn cons"),col=c("blue","red","orange"),pch=c(1,2,3))
+
+#legend(1e+1,1e-4,c("phmmert","tblastn fpw", "tblastn cons"),col=c("blue","red","orange"),pch=c(1,2,3))
+
+

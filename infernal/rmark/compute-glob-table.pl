@@ -63,55 +63,72 @@ while ($l = <F>) {
 }
 
 
-if ($ARGV[0] eq "fpw") {
-   @gis = sort {$fpw_hits{$a} <=> $fpw_hits{$b}} keys %fpw_hits
-} elsif ($ARGV[0] eq "cons") {
-   @gis = sort {$cons_hits{$a} <=> $cons_hits{$b}} keys %cons_hits
-} elsif ($ARGV[0] eq "hmm") {
+#if ($ARGV[0] eq "fpw") {
+#   @fpwgis = sort {$fpw_hits{$a} <=> $fpw_hits{$b}} keys %fpw_hits
+#} elsif ($ARGV[0] eq "cons") {
+#   @consgis = sort {$cons_hits{$a} <=> $cons_hits{$b}} keys %cons_hits
+#} elsif ($ARGV[0] eq "hmm") {
 #   printf("organizing by hmmi\n");
-   @gis = sort {$hmm_hits{$a} <=> $hmm_hits{$b}} keys %hmm_hits
-}
+#   @hmmgis = sort {$hmm_hits{$a} <=> $hmm_hits{$b}} keys %hmm_hits
+#}
 
-printf ( "%50s\t%12s\t%12s\t%12s\n", "gi",  "tblastnfpw", "tblastncons", "phmmert");
-   
-foreach $k (@gis) {
+@hmmgis = keys %hmm_hits;
+@fpwgis = keys %fpw_hits;
+@consgis = keys %cons_hits;
+
+@hmmseen{@hmmgis} = ();
+@hmm_cons_hits = (@hmmgis, grep{!exists $hmmseen{$_}} @consgis);
+@hmmconsseen{@hmm_cons_hits} = ();
+@all_hits = (@hmm_cons_hits, grep{!exists $hmmconsseen{$_}} @fpwgis);
+
+
+foreach $k (@all_hits) {
    #if there there was no hit for a particular
    #tool then give it an E-Value of 100 so 
    #a placeholder for it; this helps when we plot the hists
-   if (exists $fpw_hits{$k}){
-      $f = $fpw_hits{$k} 
+   if (exists $fpw_hits{$k})  {
+       ;
    }
    else {
-      $f = 100;
+      $fpw_hits{$k} = 100;
    }
 
    if (exists $cons_hits{$k}) {
-      $c = $cons_hits{$k}
+       ;
    }
    else {
-      $c = 100;
+      $cons_hits{$k} = 100;
    }
 
    if (exists $hmm_hits{$k}) {
-      $h = $hmm_hits{$k}
+      ;
    }
    else {
-      $h = 100;
+      $hmm_hits{$k} = 100;
    }
+}
 
+if ($ARGV[0] eq "fpw") {
+   @sorted_keys = sort {$fpw_hits{$a} <=> $fpw_hits{$b}} keys %fpw_hits
+} elsif ($ARGV[0] eq "cons") {
+   @sorted_keys = sort {$cons_hits{$a} <=> $cons_hits{$b}} keys %cons_hits
+} elsif ($ARGV[0] eq "hmm") {
+#   printf("organizing by hmmi\n");
+   @sorted_keys = sort {$hmm_hits{$a} <=> $hmm_hits{$b}} keys %hmm_hits
+}
+
+printf ( "%50s\t%12s\t%12s\t%12s\n", "gi",  "tblastnfpw", "tblastncons", "phmmert");
+
+foreach $k (@sorted_keys) {
    #skip hit if all search tools found the  hit and any search tool recorded an E-Value less
    #than the threshold; we will not be interested in those
-   next if (($f < $eval_min_threshold) or
-           ($c < $eval_min_threshold) or
-           ($h < $eval_min_threshold));
+   next if (($fpw_hits{$k} < $eval_min_threshold) or
+           ($cons_hits{$k} < $eval_min_threshold) or
+           ($hmm_hits{$k} < $eval_min_threshold));
 
 
-   printf ( "%50s\t%12g\t%12g\t%12g\n", $k, $f, $c, $h);
+   printf ( "%50s\t%12g\t%12g\t%12g\n", $k, $fpw_hits{$k}, $cons_hits{$k}, $hmm_hits{$k});
 }
 
 
-
-#foreach $k (sort {$b <=> $a} keys %cons_hits) {
-#   print "$k [$cons_hits{$k}] [$hmm_hits{$k}]\n";
-#}
 

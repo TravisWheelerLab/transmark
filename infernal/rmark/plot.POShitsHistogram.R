@@ -11,13 +11,13 @@ attach(myhmmdata)
 #      pch=1, log="xy", xlim=c(1e+2,1e-170), ylim=c(1e+2,1e-170))
 
 hist(logdiff,
-     main="Histogram of differences in log E-Values",
-     xlab="E-Values",
+     main="Differences in log E-Values\n positive hits phmmert vs. tblastn fpw",
+     xlab="log E-Value phmmert - log E-Value tblastn fpw",
      border="blue",
      col="green",
-     xlim=c(0,2e+2),
-     ylim=c(0,3000),
-     breaks=100,
+     xlim=c(-3.0e+1,3.0e+1),
+     ylim=c(0,2500),
+     breaks=300,
      las=1)
 
 

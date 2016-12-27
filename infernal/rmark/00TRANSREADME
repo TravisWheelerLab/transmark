@@ -47,21 +47,22 @@ wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ /home/um/wshands/i
 [wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.cons 1 .orf" 1
 [wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA  ptr.std.e100 1 .orf" 1
 
-#create the files with tables of hits common between tblastn (fpw and cons) and phmmert
+#create the files with tables of hits common between tblastn (fpw and cons) and phmmert, sorted based on switch fpw, cons, or hmm
+#(adjust min_evalue in script to eliminate 0 E-Values added by tblastn or phmmert for very low E-Values)
 [wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl fpw > fpwout
 [wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl hmm > hmmout
 [wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl cons > consout
 
-#create the files with tables of fake sequence hits common between tblastn (fpw and cons) and phmmert
+#create the files with tables of fake sequence hits common between tblastn (fpw and cons) and phmmert, sorted based on switch fpw, cons, or hmm
 [wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl fpw orf > fpworfout
 [wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl cons orf > consorfout
 [wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl hmm orf > hmmorfout
 
 #plot the real positive hits and fake sequence hits
 [wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ cat ../rmark/plot.shuffledORFhits.R | R --vanilla
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ cat ../rmark/plot.POShits.R | R --vanilla
-
-
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ cat ../rmark/plot.consPOShits.R | R --vanilla
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ cat ../rmark/plot.fpwPOShits.R | R --vanilla
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ cat ../rmark/plot.POShitsHistogram.R | R --vanilla
 
 
 #create test to see how close family fpw and cons results are for those that are very different for some fpw
@@ -72,6 +73,8 @@ wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ /home/um/wshands/i
 ##to sort on the 4th column
 [wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ sort -g -b -t$'\t' -k 4,8 ratiotest | less
 
-#to create log diff in evalues file
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastncons\tphmmert\tlogdiff"} FNR>1 { tblastlog = (log($3)/log(10)); phmmertlog = (log($4)/log(10)); logdiff = (tblastlog < phmmertlog) ? phmmertlog-tblastlog : tblastlog-phmmertlog; printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$3,$4,logdiff) }' hmmoutmin-170 | sort -g -b -t$'\t' -k 4,8  > logevaluediff
+#to create log diff in evalues phmmet vs. fpw file for plotting histogram 
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastncons\tphmmert\tlogdiff"} FNR>1 {printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$4,(log($4)/log(10))-(log($2)/log(10)) ) }' hmmoutmin-170 | sort -g -b -t$'\t' -k 4,8  > logevaluediff
+
+
 
