@@ -17,12 +17,15 @@
 #now get the named  MSAs from the file with all the MSAs
 % esl-afetch -f  all_alignments.stk some_ali_names.lst > 7362_alignments.stk
 
+#put my_msub in path
+#my_msub should be in repository
 
 #commands to generate test benchmark:
 #generate the DNA background benchmark with decoy shuffled ORFs inserted into the background
 wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ /home/um/wshands/infernal/Users/traviswheeler/src/infernal-1.1.1/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D /data/wshands/harderpfamdnamark/Pfam-A.v27.seed rmarkinsertORFandDNA /data/wshands/harderpfamdnamark/7362_alignments.stk  /home/um/wshands/infernal/Users/traviswheeler/src/infernal-1.1.1/rmark/rmark3-bg.hmm
 
 #create a DB for tblastn to use
+#used ncbi-blast-2.2.31+-x64-linux.tar.gz
 [wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ makeblastdb -dbtype nucl -in rmarkinsertORFandDNA.fa
 
 #create the file that has the amino acid MSAs that have the sequences will be used as query sequences
