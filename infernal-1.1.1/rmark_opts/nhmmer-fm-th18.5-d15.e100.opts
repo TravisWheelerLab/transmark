@@ -1,0 +1,3 @@
+-E 100 --cpu=0 --tformat hmmerfm --seed_sc_thresh 18.5 --seed_max_depth 15 --seed_sc_density 0.8
+
+
