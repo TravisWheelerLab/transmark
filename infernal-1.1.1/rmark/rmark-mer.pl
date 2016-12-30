@@ -15,6 +15,8 @@
 #use strict;
 my $usage = "Usage: perl mer.pl <posfile> | <rmark outfile>\n";
 
+# for fileparse below for shuffled orf decoys
+use File::Basename;
 
 use Getopt::Std;
 getopts('E:T:');
@@ -28,6 +30,14 @@ if (defined $opt_T) { $T_set = 1; $minT = $opt_T; }
 my $posfile = shift;
 my $timefile = shift;
 if (! -e $posfile)  { die "$posfile doesn't exist"; }
+
+# Added to process shuffled ORF statistics
+#print("pos file ",$posfile);
+my($filename, $dirs, $suffix) = fileparse($posfile, ".orf");
+my $shuffledorf = 0;
+#printf("suffix is %5s Filename is %19s posfile is %10s\n", $suffix, $filename, $posfile);
+if ( $suffix eq ".orf") { $shuffledorf = 1; }
+
 if (! -e $timefile) { die "$timefile doesn't exist"; }
 
 my ($line, $fam, $tmp, $fn, $fp, $mer, $fam_strlen, $sc, $match, $strand, $mer_fp, $mer_fn, $mer_sc);
@@ -48,6 +58,7 @@ my $seen_sc = 0;
 my $sc_should_increase = 0;
 my $sc_should_decrease = 0;
 
+ 
 # read time file, if there's a line like this
 #total                      0.36 hours ==      21.86 minutes ==    1311.43 seconds
 # extract the total hours, we'll print this at the end of the MER summary line
@@ -93,8 +104,8 @@ foreach $fam (keys (%fam_nposH)) {
     %{$seen_matchHH{$fam}} = ();
 }
 
-printf("= %5s  %-*s  %-20s  %8s  %3s\n", 
-       "idx", $fam_strlen, "family", "hit", "score", "+/-");
+printf("= %5s  %-*s  %-20s  %8s  %3s %3d\n", 
+       "idx", $fam_strlen, "family", "hit", "score", "+/-", $shuffledorf);
 
 my $nlisted = 0;
 while ($line = <>)
@@ -120,10 +131,10 @@ while ($line = <>)
 	    $sc_should_decrease = 1;
 	}
     }
-    if(! $seen_matchHH{$fam}{$match}) { 
+    if((($shuffledorf != 1) && (! $seen_matchHH{$fam}{$match})) || ($shuffledorf == 1))  { 
         # if seen_matchHH{$fam}{$match}, we've already seen a (better scoring) match to this positive, skip it
 	# note that seen_matchHH{$fam}{$match} is only set below for POSITIVES, so decoys will never be skipped
-	if($match =~ m/^decoy/) { 
+	if ($match =~ m/^decoy/) { 
 	    # negative
 	    $nlisted++;
 	    $fam_fpH{$fam}++;
@@ -131,7 +142,9 @@ while ($line = <>)
 	    printf("= %5d  %-*s  %-20s  %8g  %3s\n", 
 		   $nlisted, $fam_strlen, $fam, $match, $sc, " - ");
 	}
-	elsif(($match =~ m/^$fam\/\d+/) && ($strand eq "same")) { 
+        # Added second test to process shuffled ORF statistics
+	elsif((($shuffledorf != 1) && ($match =~ m/^$fam\/\d+/) && ($strand eq "same")) || 
+              (($shuffledorf == 1) && ($strand eq "same"))) {
 	    # positive
 	    $nlisted++;
 	    $fam_fnH{$fam}--;
