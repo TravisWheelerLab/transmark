@@ -1,7 +1,0 @@
-pdf("hmm.subset.pdf",width=5,height=5)
-mydata <- read.table(file.path("hmmout"), header=T, sep="\t")
-attach(mydata)
-plot(tblastn, phmmert, main="Sharper E-values with phmmert than tblastn cons", cex=0.8, xlab="tblastn - single sequence", ylab="phmmert - single sequence", 
-       log="xy", xlim=c(10,1e+4), ylim=c(10,1e+4))
-segments( 10,10,1e+4, 1e+4, lwd=1, col="pink")
-
