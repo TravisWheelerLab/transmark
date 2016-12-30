@@ -1,0 +1,486 @@
+
+
+all_alignments.stk file was created by Travis from Pfam DB
+Just subsample 5% of all MSAs so there are not too many families and benchmark is smaller
+% esl-alistat all_alignments.stk  | awk '/Alignment name/ { print $3}' > all_ali_names.lst
+
+% sort -R --random-source all_ali_names.lst all_ali_names.lst | head -n 736 > some_ali_names.lst
+(using "--random-source all_ali_names.lst" to set the seed)
+
+% esl-afetch -f  all_alignments.stk some_ali_names.lst > some_alignments.stk
+
+# --maxtest contro
+ls the number of planted sequences
+% rmark/rmark-create -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20 pfamDNAmark some_alignments.stk rmark_folder/rmark/rmark3-bg.hmm
+
+%  wc pfamDNAmark.tbl
+ 147 1029 9114 pfamDNAmark.tbl
+ 
+%  esl-seqstat pfamDNAmark.pfa
+...
+Number of sequences: 2762
+
+OK, that seems feasible.
+
+
+% time makeblastdb -dbtype nucl -in pfamDNAmark.fa
+Building a new DB, current time: 01/06/2015 15:17:20
+New DB name:   pfamDNAmark.fa
+New DB title:  pfamDNAmark.fa
+Sequence type: Nucleotide
+Keep Linkouts: T
+Keep MBits: T
+Maximum file size: 1000000000B
+hmmbuild pfamDNAmark.hmm pfamDNAmark.msa
+
+
+% hmmbuild pfamDNAmark.hmm pfamDNAmark.msa
+# CPU time: 27.35u 0.14s 00:00:27.49 Elapsed: 00:00:03.80
+
+
+
+#exact commands I ran:
+In my first pass at this, I had a ton of families:
+
+% grep "\/\/" ../all_alignments.stk   | wc
+  14724   14724   44172
+
+
+[wshands@scyld harderpfamdnamark]$ /home/um/wshands/pulloftranslatedsearch/hmmer/easel/miniapps/esl-alistat all_alignments.stk  | awk '/Alignment name/ { print $3}' > all_ali_names.lst
+
+Use 5% of families only 
+sort -R --random-source all_ali_names.lst all_ali_names.lst | head -n 736 > some_736_ali_names.lst
+
+ /home/um/wshands/pulloftranslatedsearch/hmmer/easel/miniapps/esl-afetch -f  all_alignments.stk some_736_ali_names.lst > some_736_alignments.stk
+ 
+ #Used rmark-create in /data/wshands/harderpfamdnamark/Users/traviswheeler/src/infernal-1.1.1/rmark because apparently 
+ #this is a special version which must be used to generate the (training/test sequences?)
+ [wshands@scyld transsearchbenchmark]$ ../Users/traviswheeler/src/infernal-1.1.1/rmark/rmark-create -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20 pfamtransDNAmark ../some_736_alignments.stk ../Users/traviswheeler/src/infernal-1.1.1/rmark/rmark3-bg.hmm
+ 
+ used curl ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam27.0/Pfam-A.seed.gz > Pfam-A.v27.seed.gz
+ to get Pfam seed file for use in build_protein_training_seeds
+[wshands@scyld transsearchbenchmark]$  ./build_protein_training_seeds.pl
+[wshands@scyld transsearchbenchmark]$  hmmbuild pfamtransAAmark.hmm pfamtransAAmark.msa
+  
+[wshands@scyld transsearchbenchmark]$ perl ../rmark/rmark-master.pl -F -N 16 -C pfamtransAAmark.hmm  $H_PATH ../rmark ../rmark ptr.std.e100 ../rmark_opts/phmmert.e100.opts pfamtransDNAmark ../rmark/x-phmmert  100000 
+ 
+To get status of the jobs:
+[wshands@scyld ptr.std.e100]$ qstat -u wshands
+
+scyld.localdomain:
+                                                                                  Req'd    Req'd       Elap
+Job ID                  Username    Queue    Jobname          SessID  NDS   TSK   Memory   Time    S   Time
+----------------------- ----------- -------- ---------------- ------ ----- ------ ------ --------- - ---------
+5866.scyld.localdomain  wshands     batch    ptr.std.e100.0    79674     1     16    --   27:46:40 R  00:07:20
+5867.scyld.localdomain  wshands     batch    ptr.std.e100.1    79676     1     16    --   27:46:40 R  00:07:20
+...
+
+
+Then generate some statistics files:
+[wshands@scyld transsearchbenchmark]$ my_msub gather "../rmark/rmark-pp.sh pfamtransDNAmark  ptr.std.e100 1" 1
+
+Then generate the ROC plot:
+[wshands@scyld transsearchbenchmark]$ perl ../rmark/transmark-Rroc.pl -R listfiles/pfamtransDNAmark.ROC.list pfamtransDNAmark-ROC.pdf 0 ""
+
+
+OK this ROC plot did not display any line for phmmert; perhaps because phmmert found most of the sequences???
+
+So create a benchmark that is harder by decreasing the percentage similarity allowable between training and test sequences with the -1 option; set it to 0.40
+[wshands@scyld transsearch_-1_0.4]$ ../Users/traviswheeler/src/infernal-1.1.1/rmark/rmark-create -1 0.4 -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20 pfamtransDNAmark ../some_736_alignments.stk ../Users/traviswheeler/src/infernal-1.1.1/rmark/rmark3-bg.hmm
+
+[wshands@scyld transsearch_-1_0.4]$ wc -l pfamtransDNAmark.tbl
+45 pfamtransDNAmark.tbl
+[wshands@scyld transsearch_-1_0.4]$ wc -l pfamtransDNAmark.pos
+718 pfamtransDNAmark.pos
+[wshands@scyld transsearch_-1_0.4]$
+Only a quarter of the total number of test sequences as the previous run but I will see if it is difficult enough and
+if the ROC plot is generated with a trend line
+
+[wshands@scyld transsearch_-1_0.4]$ ../build_protein_training_seeds.pl
+[wshands@scyld transsearch_-1_0.4]$hmmbuild pfamtransAAmark.hmm pfamtransAAmark.msa
+
+[wshands@scyld transsearch_-1_0.4]$  perl ../rmark/rmark-master.pl -F -N 16 -C pfamtransAAmark.hmm  $H_PATH ../rmark ../rmark ptr.std.e100 ../rmark_opts/phmmert.e100.opts pfamtransDNAmark ../rmark/x-phmmert  100000
+
+[wshands@scyld transsearch_-1_0.4]$ my_msub gather "../rmark/rmark-pp.sh pfamtransDNAmark  ptr.std.e100 1" 1
+[wshands@scyld transsearch_-1_0.4]$ perl ../rmark/transmark-Rroc.pl -R ../listfiles/pfamtransDNAmark.ROC.list pfamtransDNAmark-ROC.pdf 0 ""
+
+Now I get a ROC plot with a phmmert sensitivity trend consistantly at 90% so benchmark not hard enough; I need phmmert to have 
+somewhere between 40 to 60% sensitivity
+
+../Users/traviswheeler/src/infernal-1.1.1/rmark/rmark-create -1 0.3 -N 10 -L 100000000 -R 5 -E 1 --maxtrain 30 --maxtest 20 pfamtransDNAmark ../all_alignments.stk ../Users/traviswheeler/src/infernal-1.1.1/rmark/rmark3-bg.hmm
+
+[wshands@scyld transsearch_-1_0.3_-R_5_-E_1]$ wc -l pfamtransDNAmark.tbl
+2348 pfamtransDNAmark.tbl
+[wshands@scyld transsearch_-1_0.3_-R_5_-E_1]$ wc -l pfamtransDNAmark.pos
+3740 pfamtransDNAmark.pos
+
+[wshands@scyld transsearch_-1_0.3_-R_5_-E_1]$ ../build_protein_training_seeds.pl
+[wshands@scyld transsearch_-1_0.3_-R_5_-E_1]$ hmmbuild pfamtransAAmark.hmm pfamtransAAmark.msa
+
+[wshands@scyld transsearch_-1_0.3_-R_5_-E_1]$ perl ../rmark/rmark-master.pl -F -N 16 -C pfamtransAAmark.hmm  $H_PATH ../rmark ../rmark ptr.std.e100 ../rmark_opts/phmmert.e100.opts pfamtransDNAmark ../rmark/x-phmmert  100000
+[wshands@scyld transsearch_-1_0.3_-R_5_-E_1]$ my_msub gather "../rmark/rmark-pp.sh pfamtransDNAmark  ptr.std.e100 1" 1
+[wshands@scyld transsearch_-1_0.3_-R_5_-E_1]$ perl ../rmark/transmark-Rroc.pl -R ../listfiles/pfamtransDNAmark.ROC.list pfamtransDNAmark-ROC.pdf 0 "title"
+
+Sensitivity now at about 78%; still not low enough??? but I will try it with tblastn to check
+
+[wshands@scyld transsearch_-1_0.3_-R_5_-E_1]$ makeblastdb -dbtype nucl -in pfamtransDNAmark.fa
+
+[wshands@scyld transsearch_-1_0.3_-R_5_-E_1]$ perl ../rmark/rmark-master.pl -G pfamtransAAmark  -F -N 16 $H_PATH ../rmark ../rmark tbn.w3.e100.cons ../rmark_opts/tblastn-w3-e100.opts pfamtransDNAmark ../rmark/x-tblastn-cons 100000
+[wshands@scyld transsearch_-1_0.3_-R_5_-E_1]$ my_msub gather "../rmark/rmark-pp.sh pfamtransDNAmark tbn.w3.e100.cons 1" 1
+
+[wshands@scyld transsearch_-1_0.3_-R_5_-E_1]$ perl ../rmark/rmark-master.pl -G pfamtransAAmark  -F -N 16 $H_PATH ../rmark ../rmark tbn.w3.e100.fpw ../rmark_opts/tblastn-w3-e100.opts pfamtransDNAmark ../rmark/x-tblastn-fpw  100000
+[wshands@scyld transsearch_-1_0.3_-R_5_-E_1]$ my_msub gather "../rmark/rmark-pp.sh pfamtransDNAmark tbn.w3.e100.fpw 1" 1
+
+
+perl ../rmark/transmark-Rroc.pl -R ../listfiles/pfamtransDNAmark.ROC.list pfamtransDNAmark-ROC.pdf 0 "title"
+
+
+
+Try reducing the number of families to 7362 from the all list and set the -1 and -2 parameters
+sort -R --random-source all_ali_names.lst all_ali_names.lst | head -n 7362 > 7362_ali_names.lst
+esl-afetch -f  all_alignments.stk 7362_ali_names.lst > 7362_alignments.stk
+
+ mkdir transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam
+ cd transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam
+[wshands@scyld transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam]$ ../Users/traviswheeler/src/infernal-1.1.1/rmark/rmark-create -1 0.4 -2 0.4 -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20 pfamtransDNAmark ../7362_alignments.stk ../Users/traviswheeler/src/infernal-1.1.1/rmark/rmark3-bg.hmm
+
+[wshands@scyld transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam]$../build_protein_training_seeds.pl
+[wshands@scyld transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam]$hmmbuild pfamtransAAmark.hmm pfamtransAAmark.msa
+[wshands@scyld transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam]$makeblastdb -dbtype nucl -in pfamtransDNAmark.fa
+
+[wshands@scyld transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam]$perl ../rmark/rmark-master.pl -F -N 16 -C pfamtransAAmark.hmm  $H_PATH ../rmark ../rmark ptr.std.e100 ../rmark_opts/phmmert.e100.opts pfamtransDNAmark ../rmark/x-phmmert  100000
+ 
+[wshands@scyld transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam]$perl ../rmark/rmark-master.pl -G pfamtransAAmark  -F -N 16 $H_PATH ../rmark ../rmark tbn.w3.e100.cons ../rmark_opts/tblastn-w3-e100.opts pfamtransDNAmark ../rmark/x-tblastn-cons 100000
+
+[wshands@scyld transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam]$perl ../rmark/rmark-master.pl -G pfamtransAAmark  -F -N 16 $H_PATH ../rmark ../rmark tbn.w3.e100.fpw ../rmark_opts/tblastn-w3-e100.opts pfamtransDNAmark ../rmark/x-tblastn-fpw  1000000
+
+[wshands@scyld transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam]$my_msub gather "../rmark/rmark-pp.sh pfamtransDNAmark tbn.w3.e100.cons 1" 1
+[wshands@scyld transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam]$my_msub gather "../rmark/rmark-pp.sh pfamtransDNAmark tbn.w3.e100.fpw 1" 1
+[wshands@scyld transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam]$my_msub gather "../rmark/rmark-pp.sh pfamtransDNAmark  ptr.std.e100 1" 1
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh pfamtransDNAmark exonerate.fpw 1" 1
+ 
+[wshands@scyld transsearch_-1_0.4_-2_0.4_-R_10_-E_10_7362fam]$perl ../rmark/transmark-Rroc.pl -R ../listfiles/pfamtransDNAmark.ROC.list pfamtransDNAmark-ROC.pdf 0 "translated search 7362 fam"
+
+The results are a little better, but tblastn fpw sensitivity result still does not seem to be reduced much
+
+
+
+It turned out that randomly generating nucleotide sequence to use as background sequence may add stop codons too frequently so that there
+are unrealistically short ORFs that skew the results so that there are not many potential hits or false positives in the background
+sequence. We need to plant simulated 
+ORFs so that there is some negative ORFs that simulate the length and composition of real ORFs. The ability to plant simulated
+ORFs to the background sequence was added to rmark-create as a '-D' option that includes a protein MSA file name following the 
+'-D' from which a random MSA and random sequence will be extracted and planted in the background sequence so that there will be
+about 5% simulated ORFs in the background sequence.
+
+[wshands@scyld rmarktest]$ ../rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D /data/wshands/harderpfamdnamark/Pfam-A.v27.seed   rmarktestinsertDNA /data/wshands/harderpfamdnamark/some_736_alignments.stk  ../rmark3-bg.hmm
+
+
+[wshands@scyld transdecoy_-R_10_-E_10_7362fam]$ /home/um/wshands/infernal/Users/traviswheeler/src/infernal-1.1.1/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D /data/wshands/harderpfamdnamark/Pfam-A.v27.seed   rmarktestinsertDNA /data/wshands/harderpfamdnamark/some_736_alignments.stk  /home/um/wshands/infernal/Users/traviswheeler/src/infernal-1.1.1/rmark/rmark3-bg.hmm
+
+
+
+Ran the full experiment like this:
+[wshands@scyld transdecoy_-R_10_-E_10_7362fam]$ makeblastdb -dbtype nucl -in rmarktestinsertDNA.fa
+
+[wshands@scyld transdecoy_-R_10_-E_10_7362fam]$ ../build_protein_training_seeds.pl
+[wshands@scyld transdecoy_-R_10_-E_10_7362fam]$ hmmbuild rmarktestinsertAA.hmm rmarktestinsertAA.msa
+
+
+[wshands@scyld transdecoy_-R_10_-E_10_7362fam]$ /home/um/wshands/infernal/Users/traviswheeler/src/infernal-1.1.1/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D /data/wshands/harderpfamdnamark/Pfam-A.v27.seed   rmarktestinsertDNA /data/wshands/harderpfamdnamark/some_736_alignments.stk  /home/um/wshands/infernal/Users/traviswheeler/src/infernal-1.1.1/rmark/rmark3-bg.hmm
+
+[wshands@scyld transdecoy_-R_10_-E_10_7362fam]$ perl ../rmark/rmark-master.pl -F -N 16 -C rmarktestinsertAA.hmm  $H_PATH ../rmark ../rmark ptr.std.e100 ../rmark_opts/phmmert.e100.opts rmarktestinsertDNA ../rmark/x-phmmert  100000
+
+[wshands@scyld transdecoy_-R_10_-E_10_7362fam]$ perl ../rmark/rmark-master.pl -G rmarktestinsertAA  -F -N 16 $H_PATH ../rmark ../rmark tbn.w3.e100.cons ../rmark_opts/tblastn-w3-e100.opts rmarktestinsertDNA ../rmark/x-tblastn-cons 100000
+
+[wshands@scyld transdecoy_-R_10_-E_10_7362fam]$ perl ../rmark/rmark-master.pl -G rmarktestinsertAA  -F -N 16 $H_PATH ../rmark ../rmark tbn.w3.e100.fpw ../rmark_opts/tblastn-w3-e100.opts rmarktestinsertDNA ../rmark/x-tblastn-fpw  1000000
+
+[wshands@scyld transdecoy_-R_10_-E_10_7362fam]$ my_msub gather "../rmark/rmark-pp.sh rmarktestinsertDNA  ptr.std.e100 1" 1
+[wshands@scyld transdecoy_-R_10_-E_10_7362fam]$ my_msub gather "../rmark/rmark-pp.sh rmarktestinsertDNA tbn.w3.e100.fpw 1" 1
+[wshands@scyld transdecoy_-R_10_-E_10_7362fam]$ my_msub gather "../rmark/rmark-pp.sh rmarktestinsertDNA tbn.w3.e100.cons 1" 1
+
+[wshands@scyld transdecoy_-R_10_-E_10_7362fam]$ perl ../rmark/transmark-Rroc.pl -R ../listfiles/pfamtransDNAmark.ROC.list pfamtransDNAmark-ROC.pdf 0 "translated searchwith decoy inserts 7362 fam"
+
+Results were no better than before...
+
+I think I discovered a bug in the perl script build_protein_training seeds which fails to strip the test sequences from the msa that is used to construct the search hmm.
+
+Please look at the DUF1203* files in /data/wshands/harderpfamdnamark/testbuildscript and let me know if I am off base here/not thinking the right way etc.
+
+[wshands@scyld testbuildscript]$ grep Q166P0_ROSDO DUF1203.filter.names
+Q166P0_ROSDO/36-153
+[wshands@scyld testbuildscript]$ grep Q166P0_ROSDO rmarktestinsertAA.msa
+#=GS Q166P0_ROSDO/36-153 AC Q166P0.1
+Q166P0_ROSDO/36-153 TYPCRHCLKEAGKKDGALLFSYRLP--------LPDSVYAQPTAVFLCKGECTGYTGGQSVP----------EIV-GNRFVALRAFRAKGLMDYAMNTLSDGKG-------VGDEVERILQNNEIAFINVHTALAGCMLCAVRR
+
+
+[wshands@scyld testbuildscript]$ grep Q166P0_ROSDO origtraintest
+#=GS DUF1203/1  DE Q166P0_ROSDO
+
+[wshands@scyld testbuildscript]$ less origtraintest
+...
+# STOCKHOLM 1.0
+#=GF ID TEST.DUF1203
+
+#=GS DUF1203/1  DE Q166P0_ROSDO
+...
+
+So the test sequence in this case will be included in the amino acid HMM used to search the DNA sequence DB when the hmmbuild command issued.
+
+This is caused by a bug in the line:
+  do_cmd (qq[awk 'BEGIN{FS="|"} {print \$2}' $ali.dna.names > $ali.dna.names2]);
+which leaves several empty lines in DUF1203.dna.names2, and not the fixed up names from DUF1203.dna.names.
+
+For some reason when the line:
+ do_cmd ("grep -f $ali.dna.names2 $ali.pfam.names > $ali.filter.names");
+is executed all the sequence names in DUF1203.pfam.names are included in DUF1203.filter.names. I would have thought none of them would be included...which would have uncovered the bug... 
+
+I believe that DUF1203.dna.names2 should contain the fixed up names from DUF1203.dna.names and not contain empty lines. Then when the command:
+
+do_cmd ("esl-alimanip --seq-k $ali.filter.names $ali.pfam.sto >> $protfile");
+
+is executed in build_protein_training_seeds.pl it would only include the sequences in the DNA MSA which is the msa used for training (building the HMM).
+
+
+
+
+Fix bug by
+#  do_cmd (qq[awk 'BEGIN{FS="|"} {print \$2}' $ali.dna.names > $ali.dna.names2]);
+  do_cmd (qq[awk 'BEGIN{FS="|"} {if ( \$2 == \'\\n\' )  print \$1; else print \$2}' $ali.dna.names > $ali.dna.names2]);
+  
+I fixed the bug in build_protein_training_seeds.pl and ran the searches again with -R 10 -E 10 and did not set -1 or -2 and adding in the decoy DNA sequences. The results were dramatically different with phmmert sensitivity around .8 and tblastn cons around .15 and fpw around .28
+
+I will have to run some more searches to confirm this but based on these preliminary results it seems that it will not be necessary to sort the training and test sequences using amino acids.
+
+Quick check: in the plot, it looks like FPW actually performs worse (in terms of the height of the plotted line) than consensus. That's perfectly possible, but worth verifying. FPW will certainly have higher sensitivity, but if the false positive rate is too high, you'll have false hits showing up before all those hits found due to increased sensitivity, which drives down that line. Is that what you're seeing in the output?
+
+Also, I notice that the FPW runtime isn't a lot worse than the consensus variant. Is that because the number of sequences per family has been limited?
+
+
+
+
+
+These are the statistics in 
+ tbn.w3.e100.fpw.mer:
+
+# family/category   mer  npos    fn    fp    thresh
+# ---------------  ----  ----  ----  ----  --------
+  zf-UBP             20    20    20     0         -
+# ---------------  ----  ----  ----  ----  --------
+  *family-sum*     2532  3009  2531     1         -
+  *summary*        2551  3009  2549     2     0.079  0.51h
+
+
+for tbn.w3.e100.cons.mer:
+
+# family/category   mer  npos    fn    fp    thresh
+# ---------------  ----  ----  ----  ----  --------
+  zf-UBP             20    20    20     0         -
+# ---------------  ----  ----  ----  ----  --------
+  *family-sum*     2104  3009  2100     4         -
+  *summary*        2153  3009  2137    16       2.5  0.22h
+
+
+for ptr.std.e100.mer:
+
+# family/category   mer  npos    fn    fp    thresh
+# ---------------  ----  ----  ----  ----  --------
+  *family-sum*      530  3009   525     5         -
+  *summary*         605  3009   593    12      0.59  7.10h
+
+So it seems like the big difference between phmmert and tblastn is the number of false negatives. The number of false positives is about the same between tblastn cons and fpw. 
+
+I am not sure what 'before' means in "if the false positive rate is too high, you'll have false hits showing up before all those hits found due to increased sensitivity." The decoys  show up at about line 463 in the fpw mer file and about line 884 in the cons mer file. I guess this is what you were suggesting?
+
+Its unclear to me how the "number of false positives per search" is calculated and displayed; is this done by binning E-values and counting false negatives per family to true positives for that family for all the families in the E-value bin and using the Sn = TP/(TP + FN) formula? Not sure where the FP factor in...
+
+The maximum number of training and test sets per family where limited to 10 each. Yes usually fpw takes much longer than cons, not sure why it didn't here, but the number of families was limited: 
+There were 159 families used in queries:
+[wshands@scyld transdecoy_-R_10_-E_10_736fam]$ wc -l rmarktestinsertDNA.tbl
+159 rmarktestinsertDNA.tbl
+
+Including the decoy shuffled translated ORFs causes tblastn fpw sensitivity to decrease dramatically. See the graph when I did not include decoy ORFs and how much better fpw sensitivity is. The decoy ORFs cause tblastn fpw to generate a lot more false negatives
+
+# family/category   mer  npos    fn    fp    thresh
+DECOY ORFS PLANTED
+# ---------------  ----  ----  ----  ----  --------
+  zf-UBP             20    20    20     0         -
+# ---------------  ----  ----  ----  ----  --------
+  *family-sum*     2532  3009  2531     1         -
+  *summary*        2551  3009  2549     2     0.079  0.51h
+
+NO DECOY ORFS PLANTED
+# ---------------  ----  ----  ----  ----  --------
+  *family-sum*     1553  3009  1540    13         -
+  *summary*        1628  3009  1583    45      0.13  1.76h
+
+
+Why would this happen?
+
+
+
+
+[wshands@scyld testorfscripts]$  my_msub gather "../rmark/rmark-pp.sh rmarktestinsertDNA tbn.w3.e100.cons 1 orf" 1
+
+Create the plot of hits on shuffled ORFs by doing:
+[wshands@scyld transsearchorf_-R_10_-E_10_736fam_2016_10_16]$ cat ../rmark/plot.hmm.fpw.subset.R | R --vanilla
+
+
+10/29/2016
+created new test infrastructure now that the scripts and technique are set up
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ /home/um/wshands/infernal/Users/traviswheeler/src/infernal-1.1.1/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D /data/wshands/harderpfamdnamark/Pfam-A.v27.seed rmarkinsertORFandDNA /data/wshands/harderpfamdnamark/7362_alignments.stk  /home/um/wshands/infernal/Users/traviswheeler/src/infernal-1.1.1/rmark/rmark3-bg.hmm
+
+11/3/2016 
+#found memory overwrite in remove duplicates function using valgrind
+DEBUG: Name of decoy MSA to retrieve is Rad1 at index 11632
+DEBUG: Decoy sequence to retrieve is at index 7 out of 26 sequences
+allocated 727 bytes for decoy ORF textdecoy DNA seq is TTTACTAAATTTGTTTCTTGTCCTTCTTTTGATAAAATTTTTGCTGTTTATTCTGATGTTGATTATAATTTTTTAATTGTTTTAGAAAATCCTAATACTTATGAAGATTCTTGTATTTTA6
+Added 8 decoy sequences
+DEBUG: Name of decoy MSA to retrieve is Cu_amine_oxid at index 2087
+Hardware watchpoint 3: posseqs[3]
+
+Old value = (ESL_SQ *) 0x692890
+New value = (ESL_SQ *) 0x2e2e2e2e2e2e2e2e
+memcpy () at ../sysdeps/x86_64/memcpy.S:218
+218             leaq    32(%rsi), %rsi
+(gdb) bt
+#0  memcpy () at ../sysdeps/x86_64/memcpy.S:218
+#1  0x0000000000409e04 in esl_strcat (dest=0x73cdd10, ldest=-1, src=0x738bf30 '.' <repeats 93 times>, "*", '.' <repeats 95 times>, "*.........."..., lsrc=-1) at easel.c:615
+#2  0x0000000000423d34 in esl_msa_AppendGR (msa=0x73ed130, tag=0x73321b0 "pAS", sqidx=14,
+    value=0x738bf30 '.' <repeats 93 times>, "*", '.' <repeats 95 times>, "*.........."...) at esl_msa.c:1826
+#3  0x0000000000425186 in esl_msa_SequenceSubset (msa=0x734a170, useme=0x73ea930, ret_new=0x7ffffffd6048) at esl_msa.c:2215
+#4  0x0000000000405073 in remove_fragments (cfg=0x7fffffffd480, msa=0x734a170, ret_filteredmsa=0x7ffffffd6048, ret_nfrags=0x7ffffffd6034) at rmark-create.c:893
+#5  0x0000000000404749 in add_decoy_ORFs_to_positive_sequence_list (cfg=0x7fffffffd480, decoymsafp=0x7d7cd0, decoy_alphabet=0x67f630, num_decoy_ORFs=50000,
+    decoy_msa_names=0x7ffffffd61e0, num_decoy_msa_names=14831, posseqs=0x7ffff7e30010, npos=0x7ffffffd60d4) at rmark-create.c:729
+#6  0x0000000000406f6b in synthesize_negatives_and_embed_positives (go=0x67d010, cfg=0x7fffffffd480, posseqs=0x73f5bb0, npos=27325, decoymsafp=0x7d7cd0,
+    decoy_alphabet=0x67f630, num_decoy_ORFs=50000, decoy_msa_names=0x7ffffffd61e0, num_decoy_msa_names=14831) at rmark-create.c:1465
+#7  0x0000000000404170 in main (argc=18, argv=0x7fffffffd788) at rmark-create.c:613
+(gdb) p *posseqs[0]
+No symbol "posseqs" in current context.
+(gdb) p posseqs[0]
+No symbol "posseqs" in current context.
+(gdb)
+
+
+11/5/2016
+The bug was that I was passing posseqs to the add decoy sequences function, not &posseqs 
+
+#commands to generate test benchmark:
+
+wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ /home/um/wshands/infernal/Users/traviswheeler/src/infernal-1.1.1/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D /data/wshands/harderpfamdnamark/Pfam-A.v27.seed rmarkinsertORFandDNA /data/wshands/harderpfamdnamark/7362_alignments.stk  /home/um/wshands/infernal/Users/traviswheeler/src/infernal-1.1.1/rmark/rmark3-bg.hmm
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ makeblastdb -dbtype nucl -in rmarkinsertORFandDNA.fa
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../build_protein_training_seeds.pl
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ hmmbuild rmarkinsertAA.hmm rmarkinsertAA.msa
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ which phmmert
+~/pulloftranslatedsearch/hmmer/src/phmmert
+
+#do the searches 
+#NOTE the result directories, e.g. tbn.w3.e100.fpw must be created before the command below is called
+#otherwise the script will try to write to the directory possibly before it is created and you will loose
+#result data
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ perl ../rmark/rmark-master.pl -F -N 16 -C rmarkinsertAA.hmm  $H_PATH ../rmark ../rmark ptr.std.e100 ../rmark_opts/phmmert.e100.opts rmarkinsertORFandDNA ../rmark/x-phmmert  1000000
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ perl ../rmark/rmark-master.pl -G rmarkinsertAA  -F -N 16 $H_PATH ../rmark ../rmark tbn.w3.e100.cons ../rmark_opts/tblastn-w3-e100.opts rmarkinsertORFandDNA ../rmark/x-tblastn-cons 1000000
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ perl ../rmark/rmark-master.pl -G rmarkinsertAA  -F -N 16 $H_PATH ../rmark ../rmark tbn.w3.e100.fpw ../rmark_opts/tblastn-w3-e100.opts rmarkinsertORFandDNA ../rmark/x-tblastn-fpw 1000000
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ perl ../rmark/rmark-master.pl -G rmarkinsertAA  -F -N 16 $H_PATH ../rmark ../rmark exonerate.fpw ../rmark_opts/exonerate.opts rmarkinsertORFandDNA ../rmark/x-exonerate-fpw  1000000
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.cons 1" 1
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.fpw 1" 1
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA  ptr.std.e100 1" 1
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh pfamtransDNAmark exonerate.fpw 1" 1
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.fpw 1 .orf" 1
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.cons 1 .orf" 1
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA  ptr.std.e100 1 .orf" 1
+
+wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl fpw > fpwout
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl hmm > hmmout
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl cons > consout
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl fpw orf > fpworfout
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl cons orf > consorfout
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl hmm orf > hmmorfout
+
+#to make plots of shuffled orf hits
+[whands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ cat ../rmark/plot.shuffledORFhits.R | R --vanilla
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ cat ../rmark/plot.POShits.R | R --vanilla
+
+
+#debugging the tblastn fpw bug where the scripts don't report the tblastn hit
+ 1431  less consout 
+ 1432  cd tbn.w3.e100.cons
+ 1433  grep Bac_GDH/7 *.out
+tbl0.out:         0     1038.0   52511493   52515356               rmark7                             Bac_GDH Bac_GDH/7 same
+tbl5.out:        33       26.9   52513416   52513544               rmark7                                YqjK Bac_GDH/7 same
+tbl7.out:        94       25.8   52515171   52515242               rmark7                                 PUA Bac_GDH/7 same
+
+ 1434  cd ../tbn.w3.e100.fpw
+ 1435  grep Bac_GDH/7 *.out
+tbl12.out:        50       26.2   52512377   52512261               rmark7                             DUF4157 Bac_GDH/7 opposite
+tbl13.out:       3.5       31.6   52513637   52513455               rmark7                         AAA_assoc_C Bac_GDH/7 opposite
+tbl13.out:        95       27.3   52513217   52513083               rmark7                         AAA_assoc_C Bac_GDH/7 opposite
+tbl2.out:        48       26.6   52513353   52513562               rmark7                         Thr_synth_N Bac_GDH/7 same
+tbl2.out:        92       26.9   52511980   52511855               rmark7                             DUF4081 Bac_GDH/7 opposite
+tbl3.out:        91       27.3   52511073   52511189               rmark7                             UPF0066 Bac_GDH/7 same
+tbl5.out:        10       28.5   52513386   52513601               rmark7                                YqjK Bac_GDH/7 same
+tbl5.out:        41       31.2   52513947   52514120               rmark7                              DUF482 Bac_GDH/7 same
+
+#the hit below does not show up in tbn.w3.e100.fpw but it should
+ 0     1038.0   52511493   52515356               rmark7                             Bac_GDH Bac_GDH/7 same
+
+#if we manually construct the fpw query, Bac_GDH Bac_GDH/7 is found by tblastn
+ 1440  mkdir fpwtest
+ 1441  cd fpwtest
+ 1442  esl-afetch --index ../rmarkinsertAA.msa 
+ 1443  esl-afetch ../rmarkinsertAA.msa Bac_GDH > Bac_GDH.sto
+ 1444  less Bac_GDH.sto 
+ 1445  esl-reformat -h
+ 1446  esl-reformat pfam Bac_GDH.sto > Bac_GDH.pfam.sto
+# take one sequence from Bac_GDH.pfam.sto and put it in oneseq.fa
+#then run tblastn 
+ 1457  tblastn -word_size 3 -db ../rmarkinsertORFandDNA.fa  -query oneseq.fa -outfmt 7 -num_threads 8 -out resultout
+
+# TBLASTN 2.2.31+
+# Query: A1WVU5_HALHL/801598
+# Database: ../rmarkinsertORFandDNA.fa
+# Fields: query id, subject id, % identity, alignment length, mismatches, gap opens, q. start, q. end, s. start, s. end, evalue, bit score
+# 20 hits found
+...
+A1WVU5_HALHL/801598     rmark7  46.12   1442    736     15      9       1421    52511070        52515359        0.0     974
+
+
+#create test to see how close family fpw and cons results are for those that are very different for some fpw
+
+#here is the command to create the ratio test file:
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$  awk  'FNR>1 {printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$3,$2/$3) }' consoutmin-170 > ratiotest
+
+#normalize????
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'FNR>1 {p=(($2-$3) - (1e-170))/(100 - (1e-170)); printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$3, p > 0 ? p : -p) }' consoutmin-170 > ratiotest
+
+#diff as percentage of min of fpw or cons
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'FNR>1 {min = ($2 < $3) ? $2 : $3; p=($2-$3)/min; printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$3, p >= 0 ? p : -p) }' consoutmin-170 > ratiotest
+
+#use + and - to indicate cons better E-Value (+) or fpw better E-Value (-) after sort 
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'FNR>1 {min = ($2 < $3) ? $2 : $3; p=($2-$3)/min; printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$3, p) }' consoutmin-170 > ratiotest
+
+#to sort on the 4th column
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ sort -g -b -t$'\t' -k 4,8 ratiotest | less
+
+
+#to create  difference of log of evalues of tblastn cons and phmmert
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'FNR>1 {printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$3,$4,(log($4)/log(10))-(log($3)/log(10)) ) }' hmmoutmin-170 | sort -g -b -t$'\t' -k 4,8  > logdiffevalue
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastncons\tphmmert\tlogdiff"} FNR>1 {printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$3,$4,(log($4)/log(10))-(log($3)/log(10)) ) }' hmmoutmin-170 | sort -g -b -t$'\t' -k 4,8  > logevaluediff
+
+
+
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastncons\tphmmert\tlogdiff"} FNR>1 { tblastlog = (log($3)/log(10)); phmmertlog = (log($4)/log(10)); logdiff = (tblastlog < phmmertlog) ? phmmertlog-tblastlog : tblastlog-phmmertlog; printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$3,$4,logdiff) }' hmmoutmin-170 | sort -g -b -t$'\t' -k 4,8  > logevaluediff
+
+hands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastncons\tphmmert\tlogdiff"} FNR>1 {printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$4,(log($4)/log(10))-(log($2)/log(10)) ) }' hmmoutmin-170 | sort -g -b -t$'\t' -k 4,8  > logevaluediff
