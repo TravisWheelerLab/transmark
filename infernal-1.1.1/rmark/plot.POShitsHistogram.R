@@ -10,13 +10,13 @@ attach(myhmmdata)
 #      cex=0.8, xlab="tblastn - E-value", ylab="phmmert - E-value", col="blue",
 #      pch=1, log="xy", xlim=c(1e+2,1e-170), ylim=c(1e+2,1e-170))
 
-hist(logdiff,
+hist(logevaluediff,
      main="Differences in log E-Values\n positive hits phmmert vs. tblastn",
-     xlab="log E-Value phmmert - log E-Value tblastn fpw",
+     xlab="log E-Value phmmert - log E-Value tblastn",
      border="blue",
      col="green",
      xlim=c(-3.0e+1,3.0e+1),
-     ylim=c(0,2500),
+     ylim=c(0,250),
      breaks=300,
      las=1)
 
