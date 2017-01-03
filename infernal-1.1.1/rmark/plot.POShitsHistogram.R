@@ -20,8 +20,8 @@ tblastnfoundit <- sub("[\r\n]", "", tblastnfoundit)
 
 ##print(sprintf("tooltechnique:%s\n",tooltechnique))
 
-print(sprintf("tooltechnique:%s",tooltechnique))
-print(sprintf("tblastnfoundit:%s",tblastnfoundit))
+#print(sprintf("tooltechnique:%s",tooltechnique))
+#print(sprintf("tblastnfoundit:%s",tblastnfoundit))
 
 
 #print(sprintf("arg[1]:%s\n",args[1]))

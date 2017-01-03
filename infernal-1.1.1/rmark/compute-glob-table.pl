@@ -10,6 +10,9 @@ if ($ARGV[1] eq "orf") {
   $fpwfile = "tbn.w3.e100.fpw.mer";
 }
 
+#set this to the minimum E-Value to be included in the table
+#any tool with an evalue equal to or less than this will
+#not be included in the table
 $eval_min_threshold = 1e-170;
 
 open F, "<$hmmfile";
@@ -111,6 +114,7 @@ foreach $k (@all_hits) {
    }
 }
 
+# sort the E-Values by tool based on the input argument
 if ($ARGV[0] eq "fpw") {
    @sorted_keys = sort {$fpw_hits{$a} <=> $fpw_hits{$b}} keys %fpw_hits
 } elsif ($ARGV[0] eq "cons") {
