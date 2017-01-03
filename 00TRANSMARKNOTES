@@ -487,3 +487,18 @@ A1WVU5_HALHL/801598     rmark7  46.12   1442    736     15      9       1421    
 [wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastncons\tphmmert\tlogdiff"} FNR>1 { tblastlog = (log($3)/log(10)); phmmertlog = (log($4)/log(10)); logdiff = (tblastlog < phmmertlog) ? phmmertlog-tblastlog : tblastlog-phmmertlog; printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$3,$4,logdiff) }' hmmoutmin-170 | sort -g -b -t$'\t' -k 4,8  > logevaluediff
 
 hands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastncons\tphmmert\tlogdiff"} FNR>1 {printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$4,(log($4)/log(10))-(log($2)/log(10)) ) }' hmmoutmin-170 | sort -g -b -t$'\t' -k 4,8  > logevaluediff
+
+#filter out results where hit for phmmert did not exist and hit for fpw did not exist
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastn\tphmmert\tlogevaluediff"} FNR>1 {if (($2 < 100) && ($4 < 100)) printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$4, (log($4)/log(10))-(log($2)/log(10)) ) }' hmmout | sort -g -b -t$'\t' -k 4,8  > hmmfpwlogevaluediff
+
+#filter out results where hit for phmmert did not exist and hit for cons did not exist
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastn\tphmmert\tlogevaluediff"} FNR>1 {if (($3 < 100) && ($4 < 100)) printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$3,$4, (log($4)/log(10))-(log($3)/log(10)) ) }' hmmout | sort -g -b -t$'\t' -k 4,8  > hmmconslogevaluediff
+
+
+#get results where hit for phmmert exists and hit for cons did not exist
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastn\tphmmert\tlogevaluediff"} FNR>1 {if (($3 == 100) && ($4 < 100)) printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$3,$4, (log($4)/log(10))-(log($3)/log(10)) ) }' hmmout | sort -g -b -t$'\t' -k 4,8  > hmmbutnoconslogevaluediff
+
+#get results where hit for phmmert exists and hit for fpw did not exist
+[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastn\tphmmert\tlogevaluediff"} FNR>1 {if (($2 == 100) && ($4 < 100)) printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$4, (log($4)/log(10))-(log($2)/log(10)) ) }' hmmout | sort -g -b -t$'\t' -k 4,8  > hmmbutnofpwlogevaluediff
+
+
