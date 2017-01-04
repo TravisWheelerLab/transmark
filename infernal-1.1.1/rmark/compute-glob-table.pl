@@ -96,21 +96,21 @@ foreach $k (@all_hits) {
        ;
    }
    else {
-      $fpw_hits{$k} = 100;
+      $fpw_hits{$k} = -1;
    }
 
    if (exists $cons_hits{$k}) {
        ;
    }
    else {
-      $cons_hits{$k} = 100;
+      $cons_hits{$k} = -1;
    }
 
    if (exists $hmm_hits{$k}) {
       ;
    }
    else {
-      $hmm_hits{$k} = 100;
+      $hmm_hits{$k} = -1;
    }
 }
 
@@ -129,9 +129,9 @@ printf ( "%50s\t%12s\t%12s\t%12s\n", "gi",  "tblastnfpw", "tblastncons", "phmmer
 foreach $k (@sorted_keys) {
    #skip hit if all search tools found the  hit and any search tool recorded an E-Value less
    #than the threshold; we will not be interested in those
-   next if (($fpw_hits{$k} < $eval_min_threshold) or
-           ($cons_hits{$k} < $eval_min_threshold) or
-           ($hmm_hits{$k} < $eval_min_threshold));
+   next if ((($fpw_hits{$k} < $eval_min_threshold) and ($fpw_hits{$k} > -1)) or
+           (($cons_hits{$k} < $eval_min_threshold) and ($cons_hits{$k} > -1)) or
+           (($hmm_hits{$k} < $eval_min_threshold) and ($hmm_hits{$k} > -1)) );
 
 
    printf ( "%50s\t%12g\t%12g\t%12g\n", $k, $fpw_hits{$k}, $cons_hits{$k}, $hmm_hits{$k});

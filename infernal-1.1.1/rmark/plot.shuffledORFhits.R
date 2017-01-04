@@ -22,7 +22,7 @@ pdf(output_file,width=5,height=5)
 #column_to_read <- paste("tblastn",tooltechnique,sep="")
 #print(sprintf("column to read:%s",column_to_read))
 
-myhmmdata <- read.table(file.path("hmmorfout"), header=T, sep="\t")
+myhmmdata <- read.table(file.path("hmmorfadjustedout"), header=T, sep="\t")
 attach(myhmmdata)
 
 if (identical(tooltechnique,"fpw")) {
