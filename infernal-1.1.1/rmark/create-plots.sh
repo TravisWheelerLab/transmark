@@ -24,11 +24,6 @@ Rscript --vanilla  ~/TravisWheelerLabTransMark/transmark/infernal-1.1.1/rmark/pl
 
 
 
-#create the table of E-Values for the hits for positive target sequences by the tools
-#sort by phmmert E-Values (hmm)
-~/TravisWheelerLabTransMark/transmark/infernal-1.1.1/rmark/compute-glob-table.pl hmm > hmmout
-
-
 #create file with difference between phmmert E-Value exponents and tblastn fpw E-Value exponents
 awk  'BEGIN { print "                               search\ttblastn\tphmmert\tlogevaluediff"} FNR>1 {if (($2 > -1) && ($4 > -1)) printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$4, (log($2)/log(10))-(log($4)/log(10)) ) }' hmmout | sort -g -b -t$'\t' -k 4,8  > hmmfpwlogevaluediff
 
