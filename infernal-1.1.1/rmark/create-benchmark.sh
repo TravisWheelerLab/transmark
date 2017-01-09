@@ -6,45 +6,74 @@
 #grep "\/\/" ../all_alignments.stk   | wc
 #  14724   14724   44172
 
+phmmertpath=/home/um/wshands/pulloftranslatedsearch/hmmer/src
+export PATH=${phmmertpath}:$PATH
+
+transmarkpath=/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.1/
+
+
 #First get the names of all the alignments
+echo "getting the names of the protein MSAs"
 esl-alistat all_alignments.stk  | awk '/Alignment name/ { print $3}' > all_ali_names.lst
 
 #Just subsample 50% of all MSAs so there are not too many families and benchmark is smaller
 #and get the names of the alignments to use
 #(using "--random-source all_ali_names.lst" to set the seed)
-sort -R --random-source all_ali_names.lst all_ali_names.lst | head -n 7362 > some_ali_names.lst
+echo "getting the names of only half of the protein MSAs"
+sort -R --random-source all_ali_names.lst all_ali_names.lst | head -n 7362 > 7362_ali_names.lst
 
 #now get the named  MSAs from the file with all the MSAs
-esl-afetch -f  all_alignments.stk some_ali_names.lst > 7362_alignments.stk
+echo "getting the protien MSAs"
+esl-afetch -f  all_alignments.stk 7362_ali_names.lst > 7362_alignments.stk
 
-
+echo "making the benchmark directory"
 mkdir transmark_benchmark_data
+echo "cd'ing into the benchmark directory"
 cd transmark_benchmark_data
 
 #put my_msub in path
 #my_msub should be in repository
 
-#commands to generate test benchmark:
-#generate the DNA background benchmark with decoy shuffled ORFs inserted into the background
-/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.1/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed rmarkinsertORFandDNA ../7362_alignments.stk  /home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.1/rmark/rmark3-bg.hmm
+echo "generating the DNA background benchmark with decoy shuffled ORFs inserted into the background"
+#${transmarkpath}/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk  ${transmarkpath}/rmark/rmark3-bg.hmm
+${transmarkpath}/rmark/rmark-create  -N 1 -L 10000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk  ${transmarkpath}/rmark/rmark3-bg.hmm
 
-#create a DB for tblastn to use
-#used ncbi-blast-2.2.31+-x64-linux.tar.gz
-makeblastdb -dbtype nucl -in rmarkinsertORFandDNA.fa
+echo "downloading NCBI stand alone BLAST"
+#curl -O ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
+mkdir ncbi-blast
+cd ncbi-blast
+curl -O ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.5.0+-x64-linux.tar.gz
+tar -xvzf ncbi-blast-2.5.0+-x64-linux.tar.gz
+export PATH=$(pwd)/ncbi-blast/ncbi-blast-2.5.0+/bin/:$PATH
+cd ..
 
-#create the file that has the amino acid MSAs that have the sequences will be used as query sequences
-#against the background sequences
-../build_protein_training_seeds.pl
+echo "creating a DB for tblastn to use"
+makeblastdb -dbtype nucl -in transmarkORFandDNA.fa
 
-#create the HMMs to use as queries from the amino acid MSAs
+echo "creating the file that has the amino acid MSAs that have the sequences will be used as query sequences against the background sequences"
+${transmarkpath}/../build_protein_training_seeds.pl transmarkAminoAcidTest.msa transmarkORFandDNA.msa
+
+echo "creating the HMMs to use as queries from the amino acid MSAs"
 hmmbuild transmarkAminoAcidTest.hmm transmarkAminoAcidTest.msa
 
-
+echo "making the phmmert result directory"
+mkdir ptr.std.e100
 #do the searches 
 #NOTE the result directories, e.g. tbn.w3.e100.fpw must be created before the command below is called
 #otherwise the script will try to write to the directory possibly before it is created and you will loose
 #result data
-perl ../rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcidTest  $H_PATH ../rmark ../rmark ptr.std.e100 ../rmark_opts/phmmert.e100.opts rmarkinsertORFandDNA ../rmark/x-phmmert  1000000
+echo "running the phmmert search against the benchmark"
+perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcidTest  $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark ptr.std.e100 ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert  1000000
+
+#wait until the running jobs have finished (there is no output from qstat)
+while [[ qstat -u wshands ]]
+do
+  echo "Waiting for phmmert to finish; press [CTRL+C] to stop.."
+  sleep 1
+done
+
+mkdir tbn.w3.e100.cons
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark tbn.w3.e100.cons ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-cons 1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 while [[ qstat -u wshands ]]
@@ -53,7 +82,11 @@ do
   sleep 1
 done
 
-perl ../rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ../rmark ../rmark tbn.w3.e100.cons ../rmark_opts/tblastn-w3-e100.opts rmarkinsertORFandDNA ../rmark/x-tblastn-cons 1000000
+#end the script here for debugging
+exit
+
+mkdir tbn.w3.e100.fpw
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark tbn.w3.e100.fpw ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-fpw 1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 while [[ qstat -u wshands ]]
@@ -62,16 +95,8 @@ do
   sleep 1
 done
 
-perl ../rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ../rmark ../rmark tbn.w3.e100.fpw ../rmark_opts/tblastn-w3-e100.opts rmarkinsertORFandDNA ../rmark/x-tblastn-fpw 1000000
-
-#wait until the running jobs have finished (there is no output from qstat)
-while [[ qstat -u wshands ]]
-do
-  echo "Press [CTRL+C] to stop.."
-  sleep 1
-done
-
-perl ../rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ../rmark ../rmark exonerate.fpw ../rmark_opts/exonerate.opts rmarkinsertORFandDNA ../rmark/x-exonerate-fpw  1000000
+mkdir exonerate.fpw
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark exonerate.fpw ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
 
 
 #wait until the running jobs have finished (there is no output from qstat)
@@ -80,9 +105,21 @@ do
   echo "Press [CTRL+C] to stop.."
   sleep 1
 done
+
+mkdir exonerate.cons
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark exonerate.cons ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
+
+
+#wait until the running jobs have finished (there is no output from qstat)
+while [[ qstat -u wshands ]]
+do
+  echo "Press [CTRL+C] to stop.."
+  sleep 1
+done
+
 
 #gather statistics for how many positive embedded squences were found by the search tools
-my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.cons 1" 1
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 while [[ qstat -u wshands ]]
@@ -91,7 +128,7 @@ do
   sleep 1
 done
 
-my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.fpw 1" 1
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 while [[ qstat -u wshands ]]
@@ -100,7 +137,7 @@ do
   sleep 1
 done
 
-my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA  ptr.std.e100 1" 1
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 while [[ qstat -u wshands ]]
@@ -109,7 +146,7 @@ do
   sleep 1
 done
 
-my_msub gather "../rmark/rmark-pp.sh pfamtransDNAmark exonerate.fpw 1" 1
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 while [[ qstat -u wshands ]]
@@ -118,7 +155,7 @@ do
   sleep 1
 done
 
-my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.fpw 1 .orf" 1
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 .orf" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 while [[ qstat -u wshands ]]
@@ -127,7 +164,7 @@ do
   sleep 1
 done
 
-my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.cons 1 .orf" 1
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1 .orf" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 while [[ qstat -u wshands ]]
@@ -136,7 +173,7 @@ do
   sleep 1
 done
 
-my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA  ptr.std.e100 1 .orf" 1
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1 .orf" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 while [[ qstat -u wshands ]]

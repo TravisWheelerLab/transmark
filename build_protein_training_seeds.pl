@@ -1,9 +1,19 @@
 #!/usr/bin/env perl
 use strict;
 
-my $protfile = "rmarkinsertAA.msa";
-my $dnafile = "rmarkinsertORFandDNA.msa";
+#my $protfile = "rmarkinsertAA.msa";
+#my $dnafile = "rmarkinsertORFandDNA.msa";
 
+my ($protfile, $dnafile) = @ARGV;
+ 
+if (not defined $protfile) {
+  die "Need amino acid MSA as first input\n";
+}
+
+if (not defined $dnafile) {
+  die "Need DNA MSA as second input\n";
+}
+ 
 my $seeds = "../Pfam-A.v27.seed";
 unlink $protfile;
 
