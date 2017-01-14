@@ -4,7 +4,7 @@ use strict;
 #my $protfile = "rmarkinsertAA.msa";
 #my $dnafile = "rmarkinsertORFandDNA.msa";
 
-my ($protfile, $dnafile) = @ARGV;
+my ($protfile, $dnafile, $seeds) = @ARGV;
  
 if (not defined $protfile) {
   die "Need amino acid MSA as first input\n";
@@ -13,8 +13,12 @@ if (not defined $protfile) {
 if (not defined $dnafile) {
   die "Need DNA MSA as second input\n";
 }
- 
-my $seeds = "../Pfam-A.v27.seed";
+
+if (not defined $seeds) {
+  die "Need Pfam Protein MSA file that contains all aligments as third input\n";
+}
+
+#my $seeds = "../Pfam-A.v27.seed";
 unlink $protfile;
 
 #get the names of the alignments in the DNA multiple alignment file

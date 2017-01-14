@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#stop the script if it attempts to use any unset variables 
+set -o nounset
+#stop the script if any command fails (returns non zero)
+set -o errexit
+
 #The all_alignments.stk file was created by Travis from Pfam DB
 #and contains all the multiple sequence alignments in the Pfam DB
 #to get the number of MSAs in the file
@@ -14,7 +19,8 @@ transmarkpath=/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.
 
 #First get the names of all the alignments
 echo "getting the names of the protein MSAs"
-esl-alistat all_alignments.stk  | awk '/Alignment name/ { print $3}' > all_ali_names.lst
+esl-alistat all_alignments.stk  | awk '/Alignment name/ {split($3, basename, ".");  print basename[1]}' > all_ali_names.lst
+
 
 #Just subsample 50% of all MSAs so there are not too many families and benchmark is smaller
 #and get the names of the alignments to use
@@ -23,7 +29,7 @@ echo "getting the names of only half of the protein MSAs"
 sort -R --random-source all_ali_names.lst all_ali_names.lst | head -n 7362 > 7362_ali_names.lst
 
 #now get the named  MSAs from the file with all the MSAs
-echo "getting the protien MSAs"
+echo "getting the protein MSAs"
 esl-afetch -f  all_alignments.stk 7362_ali_names.lst > 7362_alignments.stk
 
 echo "making the benchmark directory"
@@ -35,23 +41,28 @@ cd transmark_benchmark_data
 #my_msub should be in repository
 
 echo "generating the DNA background benchmark with decoy shuffled ORFs inserted into the background"
+#remove the seed index file if it exists
+rm -f  ../Pfam-A.v27.seed.ssi
+
 #${transmarkpath}/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk  ${transmarkpath}/rmark/rmark3-bg.hmm
-${transmarkpath}/rmark/rmark-create  -N 1 -L 10000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk  ${transmarkpath}/rmark/rmark3-bg.hmm
+
+#small test background sequence
+${transmarkpath}/rmark/rmark-create -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk  ${transmarkpath}/rmark/rmark3-bg.hmm
 
 echo "downloading NCBI stand alone BLAST"
 #curl -O ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 mkdir ncbi-blast
 cd ncbi-blast
-curl -O ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.5.0+-x64-linux.tar.gz
-tar -xvzf ncbi-blast-2.5.0+-x64-linux.tar.gz
-export PATH=$(pwd)/ncbi-blast/ncbi-blast-2.5.0+/bin/:$PATH
+curl -O ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.6.0+-x64-linux.tar.gz
+tar -xvzf ncbi-blast-2.6.0+-x64-linux.tar.gz
+export PATH=$(pwd)/ncbi-blast/ncbi-blast-2.6.0+/bin/:$PATH
 cd ..
 
 echo "creating a DB for tblastn to use"
 makeblastdb -dbtype nucl -in transmarkORFandDNA.fa
 
 echo "creating the file that has the amino acid MSAs that have the sequences will be used as query sequences against the background sequences"
-${transmarkpath}/../build_protein_training_seeds.pl transmarkAminoAcidTest.msa transmarkORFandDNA.msa
+${transmarkpath}/../build_protein_training_seeds.pl transmarkAminoAcidTest.msa transmarkORFandDNA.msa ../Pfam-A.v27.seed
 
 echo "creating the HMMs to use as queries from the amino acid MSAs"
 hmmbuild transmarkAminoAcidTest.hmm transmarkAminoAcidTest.msa
@@ -66,7 +77,7 @@ echo "running the phmmert search against the benchmark"
 perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcidTest  $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark ptr.std.e100 ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert  1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
-while [[ qstat -u wshands ]]
+while [[ $(qstat -u wshands) ]]
 do
   echo "Waiting for phmmert to finish; press [CTRL+C] to stop.."
   sleep 1
