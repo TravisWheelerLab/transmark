@@ -40,7 +40,6 @@ foreach my $ali (@names) {
   do_cmd ("esl-alistat --list $ali.dna.names $ali.dna.sto");
   #sometimes, the DNA names are formatted like "001|PUR5_SYMTH" (why!?).
   # clean this up:
-#  do_cmd (qq[awk 'BEGIN{FS="|"} {print \$2}' $ali.dna.names > $ali.dna.names2]);
   do_cmd (qq[awk 'BEGIN{FS="|"} {if ( \$2 == \'\\n\' )  print \$1; else print \$2}' $ali.dna.names > $ali.dna.names2]);
 
   #get a list of (target) sequence names that are in the DNA multiple alignment
@@ -56,7 +55,7 @@ foreach my $ali (@names) {
   #sequences planted in the background sequence by rmark-create
   do_cmd ("esl-alimanip --seq-k $ali.filter.names $ali.pfam.sto >> $protfile");
 
-  #`rm $ali.*`;
+  `rm $ali.*`;
 }
 
 
