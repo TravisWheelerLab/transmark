@@ -16,6 +16,8 @@ export PATH=${phmmertpath}:$PATH
 
 transmarkpath=/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.1/
 
+my_sub_path=/home/um/wshands/TravisWheelerLabTransMark/transmark/
+export PATH=${my_sub_path}:$PATH
 
 #First get the names of all the alignments
 echo "getting the names of the protein MSAs"
@@ -48,10 +50,9 @@ echo "generating the DNA background benchmark with decoy shuffled ORFs inserted 
 #remove the seed index file if it exists
 rm -f  ../Pfam-A.v27.seed.ssi
 
-#${transmarkpath}/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk  ${transmarkpath}/rmark/rmark3-bg.hmm
-
+${transmarkpath}/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk  ${transmarkpath}/rmark/rmark3-bg.hmm
 #small test background sequence
-${transmarkpath}/rmark/rmark-create -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk  ${transmarkpath}/rmark/rmark3-bg.hmm
+#${transmarkpath}/rmark/rmark-create -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk  ${transmarkpath}/rmark/rmark3-bg.hmm
 
 echo "downloading NCBI stand alone BLAST"
 #curl -O ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
@@ -78,7 +79,7 @@ mkdir ptr.std.e100
 #otherwise the script will try to write to the directory possibly before it is created and you will loose
 #result data
 echo "running the phmmert search against the benchmark"
-perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcidTest  $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark ptr.std.e100 ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcidTest.hmm  $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark ptr.std.e100 ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert  1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for phmmert to finish; press [CTRL+C] to stop.."

@@ -457,6 +457,8 @@ main(int argc, char **argv)
       if(origmsa->name == NULL) esl_fatal("All msa's must have a valid name (#=GC ID), alignment %d does not.", nali);
       esl_msa_ConvertDegen2X(origmsa); 
 
+      printf("DEBUG: Processing %s MSA to get training and test sets\n", origmsa->name);
+
       remove_fragments(&cfg, origmsa, &msa, &nfrags);
 
       /* Test 1: can we define train/test sets such that our thresholds 
