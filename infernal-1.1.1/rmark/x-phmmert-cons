@@ -100,8 +100,10 @@ while (<TABLE>)
     $output = `$hmmbuild  $resultdir/$msaname.query.hmm $resultdir/$msaname.query.fa`;
     if ($? != 0) { die "FAILED: $hmmbuild  $resultdir/$msaname.query.hmm $resultdir/$msaname.query.fa"; }
 
-    $status = system("$hmmpress $resultdir/$msaname.query.hmm");
-    if ($status != 0) { die "FAILED: $hmmpress $resultdir/$msaname.query.hmm"; }
+#    $status = system("$hmmpress $resultdir/$msaname.query.hmm");
+#    if ($status != 0) { die "FAILED: $hmmpress $resultdir/$msaname.query.hmm"; }
+    $output = `$hmmpress $resultdir/$msaname.query.hmm`;
+#    if ($? != 0) { die "FAILED: $hmmpress $resultdir/$msaname.query.hmm"; }
 
     print "$phmmert $searchopts --domtblout $resultdir/$msaname.tmp $resultdir/$msaname.query.hmm $fafile > $resultdir/$msaname.search";
     $status = system("$phmmert $searchopts --domtblout $resultdir/$msaname.tmp $resultdir/$msaname.query.hmm $fafile > $resultdir/$msaname.search");
