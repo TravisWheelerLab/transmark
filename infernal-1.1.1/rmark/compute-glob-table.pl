@@ -90,8 +90,8 @@ while ($l = <F>) {
 
 foreach $k (@all_hits) {
    #if there there was no hit for a particular
-   #tool then give it an E-Value of 100 so 
-   #a placeholder for it; this helps when we plot the hists
+   #tool then give it an E-Value of -1 as 
+   #a placeholder for it; this helps when we plot the histograms
    if (exists $fpw_hits{$k})  {
        ;
    }
