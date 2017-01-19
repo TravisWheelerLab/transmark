@@ -13,6 +13,8 @@ set -o errexit
 
 phmmertpath=/home/um/wshands/pulloftranslatedsearch/hmmer/src
 export PATH=${phmmertpath}:$PATH
+export H_PATH=${phmmertpath}
+
 
 transmarkpath=/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.1/
 
@@ -34,14 +36,14 @@ sort -R --random-source all_ali_names.lst all_ali_names.lst | head -n 7362 > 736
 #now get the named  MSAs from the file with all the MSAs
 echo "getting the protein MSAs"
 #esl-afetch -f  all_alignments.stk 7362_ali_names.lst > 7362_alignments.stk
-#also remove the '.stk.' suffix from the alignement names in the new 7362_alignements.stk file
+#also remove the '.stk.' suffix from the alignment names in the new 7362_alignments.stk file
 #this is becuase the all_alignments.stk file erroneously has the '.stk' suffix at the end of the alignment names
 esl-afetch -f  all_alignments.stk 7362_ali_names.lst | awk ' {where = match($0, /#=GF ID /); if (where !=0) {split($3, basename, "."); $3 =  basename[1]; print} else {print}}' > 7362_alignments.stk
 
 echo "making the benchmark directory"
-mkdir transmark_benchmark_data
+mkdir transmark_benchmark_data2
 echo "cd'ing into the benchmark directory"
-cd transmark_benchmark_data
+cd transmark_benchmark_data2
 
 #put my_msub in path
 #my_msub should be in repository
@@ -108,6 +110,17 @@ do
   sleep 1
 done
 
+mkdir ptr.std.e100.cons
+perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -G transmarkAminoAcidTest  $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark ptr.std.e100.cons ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert-cons  1000000
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Waiting for phmmert cons to finish; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+
 mkdir exonerate.fpw
 perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark exonerate.fpw ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
 
@@ -158,6 +171,16 @@ while [[ $(qstat -u wshands) ]]
 do
   sleep 1
 done
+
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100.cons 1" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering phmmert cons statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
 
 my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1" 1
 
