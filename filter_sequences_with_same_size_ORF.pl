@@ -15,7 +15,8 @@ if (not defined $dnamsafile) {
 
 unlink $dnamsafilteredfile;
 
-print "Getting the names of the alignments in the DNA multiple sequence alignment file\n";
+print "Getting the names of the alignments in the DNA multiple sequence alignment file $dnamsafile\n";
+#my @names = do_cmd(qq[esl-alistat $dnamsafile | grep \"Alignment name\" | awk '{print \$3}']);
 my @names = `esl-alistat $dnamsafile | grep "Alignment name" | awk '{print \$3}'`;
 chomp @names;
 

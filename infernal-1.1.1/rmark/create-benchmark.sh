@@ -21,10 +21,28 @@ transmarkpath=/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.
 my_sub_path=/home/um/wshands/TravisWheelerLabTransMark/transmark/
 export PATH=${my_sub_path}:$PATH
 
+if [ $# -gt 0 ]; then
+    all_DNA_MSA_file=$1
+else
+    echo "Your command line contains no arguments, the first argument must be the file of all DNA MSAs"
+    exit 1
+fi
+
+#In some organisms only UGA is decoded as a stop codon, while UAG and UAA are 
+#reassigned as sense codons. So what's happened is that we've asked easel to translate the DNA into proteins using the default codon table, but that table doesn't apply here. I haven't actually looked, but I'd bet money the the ORFs called by easel's translate code are all being stopped by stop codons "UAG" and "UAA" ... which aren't actually stop codons in Paramecium.
+
+#How to overcome?  In this case, we could ask the translate code to use the ciliate code (you'd use "-c 6"). 
+
+#But that's not really the solution to our problem. The thing is: we're building a benchmark "genome" with protein-coding sequences from all over the tree of life. That's not realistic, and it's getting us in trouble. Normally, when using phmmert, you'd know which kind of organism you were working with, so could just name the codon usage table at runtime with -c. But we can't do that here since each inserted sequence is coming from a different genome.  
+
+#I think the solution is to restrict which sequences we put into the benchmark, ensuring that they all work with the standard translation table.  The way I'd do that is to take the DNA alignment file and run esl-translate on every sequence. Only keep sequences for which the translation finds a full-length ORF. After paring the list of sequences per alignment in this way, you could then go back, and run the benchmark-creation script on the alignment. 
+echo "Filtering the DNA MSAs so that only they only contain sequences with ORFs as long as the DNA sequence"⏎
+${transmarkpath}/../filter_sequences_with_same_size_ORF.pl all_filtered_ORF_alignments.stk $all_DNA_MSA_file⏎
+
 #First get the names of all the alignments
 echo "getting the names of the protein MSAs"
-#esl-alistat all_alignments.stk  | awk '/Alignment name/ {split($3, basename, ".");  print basename[1]}' > all_ali_names.lst
-esl-alistat all_alignments.stk  | awk '/Alignment name/ { print $3}' > all_ali_names.lst
+#esl-alistat all_filtered_ORF_alignments.stk  | awk '/Alignment name/ {split($3, basename, ".");  print basename[1]}' > all_ali_names.lst
+esl-alistat all_filtered_ORF_alignments.stk  | awk '/Alignment name/ { print $3}' > all_ali_names.lst
 
 
 #Just subsample 50% of all MSAs so there are not too many families and benchmark is smaller
@@ -35,10 +53,10 @@ sort -R --random-source all_ali_names.lst all_ali_names.lst | head -n 7362 > 736
 
 #now get the named  MSAs from the file with all the MSAs
 echo "getting the protein MSAs"
-#esl-afetch -f  all_alignments.stk 7362_ali_names.lst > 7362_alignments.stk
+#esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst > 7362_alignments.stk
 #also remove the '.stk.' suffix from the alignment names in the new 7362_alignments.stk file
-#this is becuase the all_alignments.stk file erroneously has the '.stk' suffix at the end of the alignment names
-esl-afetch -f  all_alignments.stk 7362_ali_names.lst | awk ' {where = match($0, /#=GF ID /); if (where !=0) {split($3, basename, "."); $3 =  basename[1]; print} else {print}}' > 7362_alignments.stk
+#this is becuase the all_filtered_ORF_alignments.stk file erroneously has the '.stk' suffix at the end of the alignment names
+esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst | awk ' {where = match($0, /#=GF ID /); if (where !=0) {split($3, basename, "."); $3 =  basename[1]; print} else {print}}' > 7362_alignments.stk
 
 echo "making the benchmark directory"
 mkdir transmark_benchmark_data2
