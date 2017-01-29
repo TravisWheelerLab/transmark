@@ -11,15 +11,19 @@ set -o errexit
 #grep "\/\/" ../all_alignments.stk   | wc
 #  14724   14724   44172
 
-phmmertpath=/home/um/wshands/pulloftranslatedsearch/hmmer/src
-export PATH=${phmmertpath}:$PATH
-export H_PATH=${phmmertpath}
+
+
+
+#phmmertpath=/home/um/wshands/pulloftranslatedsearch/hmmer/src
+phmmertpath=/home/um/wshands/gitroot/hmmer/src
+#export PATH=${phmmertpath}:$PATH
+#export H_PATH=${phmmertpath}
 
 
 transmarkpath=/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.1/
 
 my_sub_path=/home/um/wshands/TravisWheelerLabTransMark/transmark/
-export PATH=${my_sub_path}:$PATH
+#export PATH=${my_sub_path}:$PATH
 
 if [ $# -gt 0 ]; then
     all_DNA_MSA_file=$1
@@ -27,6 +31,9 @@ else
     echo "Your command line contains no arguments, the first argument must be the file of all DNA MSAs"
     exit 1
 fi
+
+echo before comment
+: <<'COMMENT'
 
 #In some organisms only UGA is decoded as a stop codon, while UAG and UAA are 
 #reassigned as sense codons. So what's happened is that we've asked easel to translate the DNA into proteins using the default codon table, but that table doesn't apply here. I haven't actually looked, but I'd bet money the the ORFs called by easel's translate code are all being stopped by stop codons "UAG" and "UAA" ... which aren't actually stop codons in Paramecium.
@@ -36,8 +43,8 @@ fi
 #But that's not really the solution to our problem. The thing is: we're building a benchmark "genome" with protein-coding sequences from all over the tree of life. That's not realistic, and it's getting us in trouble. Normally, when using phmmert, you'd know which kind of organism you were working with, so could just name the codon usage table at runtime with -c. But we can't do that here since each inserted sequence is coming from a different genome.  
 
 #I think the solution is to restrict which sequences we put into the benchmark, ensuring that they all work with the standard translation table.  The way I'd do that is to take the DNA alignment file and run esl-translate on every sequence. Only keep sequences for which the translation finds a full-length ORF. After paring the list of sequences per alignment in this way, you could then go back, and run the benchmark-creation script on the alignment. 
-echo "Filtering the DNA MSAs so that only they only contain sequences with ORFs as long as the DNA sequence"⏎
-${transmarkpath}/../filter_sequences_with_same_size_ORF.pl all_filtered_ORF_alignments.stk $all_DNA_MSA_file⏎
+#echo "Filtering the DNA MSAs so that only they only contain sequences with ORFs as long as the DNA sequence"⏎
+#${transmarkpath}/../filter_sequences_with_same_size_ORF.pl all_filtered_ORF_alignments.stk $all_DNA_MSA_file⏎
 
 #First get the names of all the alignments
 echo "getting the names of the protein MSAs"
@@ -74,23 +81,25 @@ ${transmarkpath}/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 3
 #small test background sequence
 #${transmarkpath}/rmark/rmark-create -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk  ${transmarkpath}/rmark/rmark3-bg.hmm
 
+
 echo "downloading NCBI stand alone BLAST"
 #curl -O ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 mkdir ncbi-blast
 cd ncbi-blast
 curl -O ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.6.0+-x64-linux.tar.gz
 tar -xvzf ncbi-blast-2.6.0+-x64-linux.tar.gz
-export PATH=$(pwd)/ncbi-blast/ncbi-blast-2.6.0+/bin/:$PATH
 cd ..
+$tblastn_path=$(pwd)/ncbi-blast/ncbi-blast-2.6.0+/bin/
 
 echo "creating a DB for tblastn to use"
-makeblastdb -dbtype nucl -in transmarkORFandDNA.fa
+${tblastn_path}/makeblastdb -dbtype nucl -in transmarkORFandDNA.fa
 
 echo "creating the file that has the amino acid MSAs that have the sequences will be used as query sequences against the background sequences"
 ${transmarkpath}/../build_protein_training_seeds.pl transmarkAminoAcidTest.msa transmarkORFandDNA.msa ../Pfam-A.v27.seed
 
 echo "creating the HMMs to use as queries from the amino acid MSAs"
-hmmbuild transmarkAminoAcidTest.hmm transmarkAminoAcidTest.msa
+${phmmertpath}/hmmbuild transmarkAminoAcidTest.hmm transmarkAminoAcidTest.msa
+
 
 echo "making the phmmert result directory"
 mkdir ptr.std.e100
@@ -101,6 +110,8 @@ mkdir ptr.std.e100
 echo "running the phmmert search against the benchmark"
 perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcidTest.hmm  $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark ptr.std.e100 ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert  1000000
 
+
+
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for phmmert to finish; press [CTRL+C] to stop.."
 while [[ $(qstat -u wshands) ]]
@@ -108,8 +119,13 @@ do
   sleep 1
 done
 
+COMMENT
+
+tblastn_path=$(pwd)/ncbi-blast/ncbi-blast-2.6.0+/bin/
+
+
 mkdir tbn.w3.e100.cons
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark tbn.w3.e100.cons ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-cons 1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.cons ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-cons 1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for tblastn cons to finish; press [CTRL+C] to stop.."
@@ -119,7 +135,7 @@ do
 done
 
 mkdir tbn.w3.e100.fpw
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark tbn.w3.e100.fpw ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-fpw 1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.fpw ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-fpw 1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for tblastn fpw to finish; press [CTRL+C] to stop.."
@@ -139,8 +155,20 @@ do
 done
 
 
+echo "downloading Exonerate"
+#http://www.ebi.ac.uk/about/vertebrate-genomics/software/exonerate
+#http://ftp.ebi.ac.uk/pub/software/vertebrategenomics/exonerate/exonerate-2.2.0.tar.gz
+#http://ftp.ebi.ac.uk/pub/software/vertebrategenomics/exonerate/exonerate-2.2.0-x86_64.tar.gz
+mkdir exonerate
+cd exonerate
+curl -O http://ftp.ebi.ac.uk/pub/software/vertebrategenomics/exonerate/exonerate-2.2.0-x86_64.tar.gz
+tar -xvzf exonerate-2.2.0-x86_64.tar.gz
+cd ..
+exonerate_path=$(pwd)/exonerate/exonerate-2.2.0-x86_64/bin/
+
+
 mkdir exonerate.fpw
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark exonerate.fpw ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${exonerate_path} exonerate.fpw ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
 
 
 #wait until the running jobs have finished (there is no output from qstat)
@@ -151,7 +179,7 @@ do
 done
 
 mkdir exonerate.cons
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark exonerate.cons ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${exonerate_path} exonerate.cons ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
 
 
 #wait until the running jobs have finished (there is no output from qstat)

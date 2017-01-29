@@ -4,7 +4,8 @@
 #
 # This script is normally called by rmark-master.pl; its command line
 # syntax is tied to rmark-master.pl.
-# x-tblastn doesn't use <modeldir>, but it's passed in so that
+# x-tblastn uses <modeldir> for the path to tblasn
+# Other scripts do not use this path but it's passed in so that
 # rmark-master.pl can use a consistent command line structure for
 # all search programs (cmsearch uses it, for example).
 #
@@ -33,7 +34,7 @@ $tmpoutfile = $outfile . ".tmp";
 $sorttmpoutfile = $outfile . ".tmp.sort";
 
 $idscript   = "$scriptdir/rmark-idpositives.pl";
-$tblastn     = "$execdir/tblastn";
+$tblastn    = "$modeldir/tblastn";
 $afetch     = "$execdir/esl-afetch";
 $sfetch     = "$execdir/esl-sfetch";
 $reformat   = "$execdir/esl-reformat";
@@ -50,7 +51,7 @@ if(! -e $reformat) {
     if(! -e $reformat) { die "$reformat does not exist"; }
 }    
 if(! -e $tblastn) { 
-    $tblastn = "/home/um/wshands/src/ncbi-blast-2.2.31+/bin/tblastn";
+#    $tblastn = "$resultdir/ncbi-blast/ncbi-blast-2.2.31+/bin/tblastn";
     if(! -e $tblastn) { die "$tblastn does not exist"; }
 }    
 
