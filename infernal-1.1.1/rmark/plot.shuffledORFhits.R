@@ -10,7 +10,7 @@ if (length(args)==0) {
 tooltechnique <- args[1]
 tooltechnique <- sub("[\r\n]", "", tooltechnique)
 
-print(sprintf("tooltechnique:%s",tooltechnique))
+#print(sprintf("tooltechnique:%s",tooltechnique))
 #print(sprintf("arg[1]:%s\n",args[1]))
 
 

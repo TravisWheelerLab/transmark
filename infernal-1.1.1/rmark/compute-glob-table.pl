@@ -5,6 +5,7 @@ if ($ARGV[1] eq "orf") {
   $consfile = "tbn.w3.e100.cons.mer.orf";
   $fpwfile = "tbn.w3.e100.fpw.mer.orf";
 } else {
+  $phmmertconsfile  = "ptr.std.e100.cons.mer";
   $hmmfile  = "ptr.std.e100.mer";
   $consfile = "tbn.w3.e100.cons.mer";
   $fpwfile = "tbn.w3.e100.fpw.mer";
@@ -14,6 +15,25 @@ if ($ARGV[1] eq "orf") {
 #any tool with an evalue equal to or less than this will
 #not be included in the table
 $eval_min_threshold = 1e-170;
+
+open F, "<$phmmertconsfile";
+while ($l = <F>) {
+   next if $l =~ /^#/;
+   next if $l !~ /^=/;
+#   printf("phmmertcons line %10s\n", $l);
+   @vals = split /\s+/, $l;
+   ($fam, $famseq, $eval, $plusminus) = @vals[2,3,4,5];
+   next if ($fam eq "family");
+   next if ($plusminus eq "-");
+   # skip evalues > 100 until phmmert -domE filter fixed
+   next  if ($eval > 100);
+   # skip evalues < a threshold 
+#   printf("phmmert cons file %10s %10s\n",$fam,$eval);
+   
+   $phmmertcons_hits{$fam.$famseq} = 0.0+$eval;   
+}
+
+
 
 open F, "<$hmmfile";
 while ($l = <F>) {
@@ -78,6 +98,7 @@ while ($l = <F>) {
 #merge the hits found by each tool so that there is one
 #list with all the hits even though one tool may have found
 #the positive sequence (hit) and no other tools found it
+
 @hmmgis = keys %hmm_hits;
 @fpwgis = keys %fpw_hits;
 @consgis = keys %cons_hits;
@@ -112,6 +133,15 @@ foreach $k (@all_hits) {
    else {
       $hmm_hits{$k} = -1;
    }
+
+   if (exists $phmmertcons_hits{$k}) {
+      ;
+   }
+   else {
+      $phmmertcons_hits{$k} = -1;
+   }
+
+
 }
 
 # sort the E-Values by tool based on the input argument
@@ -124,17 +154,18 @@ if ($ARGV[0] eq "fpw") {
    @sorted_keys = sort {$hmm_hits{$a} <=> $hmm_hits{$b}} keys %hmm_hits
 }
 
-printf ( "%50s\t%12s\t%12s\t%12s\n", "gi",  "tblastnfpw", "tblastncons", "phmmert");
+printf ( "%50s\t%12s\t%12s\t%12s\t%12s\n", "gi",  "tblastnfpw", "tblastncons", "phmmert", "phmmertcons");
 
 foreach $k (@sorted_keys) {
    #skip hit if all search tools found the  hit and any search tool recorded an E-Value less
    #than the threshold; we will not be interested in those
    next if ((($fpw_hits{$k} < $eval_min_threshold) and ($fpw_hits{$k} > -1)) or
            (($cons_hits{$k} < $eval_min_threshold) and ($cons_hits{$k} > -1)) or
+           (($phmmertcons_hits{$k} < $eval_min_threshold) and ($phmmertcons_hits{$k} > -1)) or
            (($hmm_hits{$k} < $eval_min_threshold) and ($hmm_hits{$k} > -1)) );
 
 
-   printf ( "%50s\t%12g\t%12g\t%12g\n", $k, $fpw_hits{$k}, $cons_hits{$k}, $hmm_hits{$k});
+   printf ( "%50s\t%12g\t%12g\t%12g\t%12g\n", $k, $fpw_hits{$k}, $cons_hits{$k}, $hmm_hits{$k}, $phmmertcons_hits{$k});
 }
 
 

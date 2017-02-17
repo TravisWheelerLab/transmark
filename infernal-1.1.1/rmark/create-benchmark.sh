@@ -11,24 +11,25 @@ set -o errexit
 #grep "\/\/" ../all_alignments.stk   | wc
 #  14724   14724   44172
 
+#git clone https://github.com/EddyRivasLab/hmmer.git
+#git checkout translatedsearch
+#cd 
+#phmmertpath=$(pwd)/hmmer/src
 
 
 
-#phmmertpath=/home/um/wshands/pulloftranslatedsearch/hmmer/src
+
+
 phmmertpath=/home/um/wshands/gitroot/hmmer/src
-#export PATH=${phmmertpath}:$PATH
-#export H_PATH=${phmmertpath}
-
 
 transmarkpath=/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.1/
 
-my_sub_path=/home/um/wshands/TravisWheelerLabTransMark/transmark/
-#export PATH=${my_sub_path}:$PATH
 
-if [ $# -gt 0 ]; then
+if [ $# -gt 1 ]; then
     all_DNA_MSA_file=$1
+    transmark_benchmark_dir=$2
 else
-    echo "Your command line contains no arguments, the first argument must be the file of all DNA MSAs"
+    echo "Your command line contains less than two arguments, the first argument must be the file of all DNA MSAs, the second is the benchmark directory name  to create"
     exit 1
 fi
 
@@ -65,13 +66,14 @@ echo "getting the protein MSAs"
 #this is becuase the all_filtered_ORF_alignments.stk file erroneously has the '.stk' suffix at the end of the alignment names
 esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst | awk ' {where = match($0, /#=GF ID /); if (where !=0) {split($3, basename, "."); $3 =  basename[1]; print} else {print}}' > 7362_alignments.stk
 
-echo "making the benchmark directory"
-mkdir transmark_benchmark_data2
-echo "cd'ing into the benchmark directory"
-cd transmark_benchmark_data2
 
-#put my_msub in path
-#my_msub should be in repository
+COMMENT
+
+echo "making the benchmark directory"
+mkdir $transmark_benchmark_dir
+echo "cd'ing into the benchmark directory"
+cd $transmark_benchmark_dir
+
 
 echo "generating the DNA background benchmark with decoy shuffled ORFs inserted into the background"
 #remove the seed index file if it exists
@@ -108,7 +110,7 @@ mkdir ptr.std.e100
 #otherwise the script will try to write to the directory possibly before it is created and you will loose
 #result data
 echo "running the phmmert search against the benchmark"
-perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcidTest.hmm  $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark ptr.std.e100 ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcidTest.hmm  $phmmert_path ${transmarkpath}/rmark ${transmarkpath}/rmark ptr.std.e100 ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert  1000000
 
 
 
@@ -119,13 +121,9 @@ do
   sleep 1
 done
 
-COMMENT
-
-tblastn_path=$(pwd)/ncbi-blast/ncbi-blast-2.6.0+/bin/
-
 
 mkdir tbn.w3.e100.cons
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.cons ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-cons 1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.cons ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-cons 1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for tblastn cons to finish; press [CTRL+C] to stop.."
@@ -135,7 +133,7 @@ do
 done
 
 mkdir tbn.w3.e100.fpw
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.fpw ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-fpw 1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.fpw ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-fpw 1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for tblastn fpw to finish; press [CTRL+C] to stop.."
@@ -145,7 +143,7 @@ do
 done
 
 mkdir ptr.std.e100.cons
-perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -G transmarkAminoAcidTest  $H_PATH ${transmarkpath}/rmark ${transmarkpath}/rmark ptr.std.e100.cons ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert-cons  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -G transmarkAminoAcidTest  $phmmert_path ${transmarkpath}/rmark ${transmarkpath}/rmark ptr.std.e100.cons ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert-cons  1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for phmmert cons to finish; press [CTRL+C] to stop.."
@@ -168,7 +166,7 @@ exonerate_path=$(pwd)/exonerate/exonerate-2.2.0-x86_64/bin/
 
 
 mkdir exonerate.fpw
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${exonerate_path} exonerate.fpw ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${exonerate_path} exonerate.fpw ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
 
 
 #wait until the running jobs have finished (there is no output from qstat)
@@ -179,7 +177,7 @@ do
 done
 
 mkdir exonerate.cons
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $H_PATH ${transmarkpath}/rmark ${exonerate_path} exonerate.cons ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${exonerate_path} exonerate.cons ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
 
 
 #wait until the running jobs have finished (there is no output from qstat)
@@ -189,6 +187,20 @@ do
   sleep 1
 done
 
+${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1
+${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1
+${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1
+${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100.cons 1
+${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1
+
+
+${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1 .orf
+${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 .orf
+${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1 .orf
+
+
+echo before comment
+: <<'COMMENT'
 
 #gather statistics for how many positive embedded squences were found by the search tools
 my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1" 1
@@ -264,4 +276,5 @@ do
   sleep 1
 done
 
+COMMENT
 
