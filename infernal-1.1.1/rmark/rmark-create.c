@@ -939,13 +939,20 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
   int tested_cnt;
   int rnd;
   double pctid;
+  ESL_SQ * p_test_seq = NULL;
+  ESL_SQ * p_train_seq = NULL;
+  char        train_seq_tmpfile[32] = "esltrainseqtmpXXXXXX";
+  char        test_seq_tmpfile[32] = "esltestseqtmpXXXXXX";
+  char       *train_tmp_msg         = "failed to create temp file to hold training seq";
+  char       *test_tmp_msg         = "failed to crate temp fle to hold test seq";
 
-    
   ESL_ALLOC(i_am_train,         sizeof(int) * msa->nseq);
   ESL_ALLOC(i_am_possibly_test, sizeof(int) * msa->nseq);
   ESL_ALLOC(i_am_test,          sizeof(int) * msa->nseq);
   ESL_ALLOC(tested,             sizeof(int) * msa->nseq);
-  
+ 
+  printf("id threshold 1:%.3f\n", cfg->idthresh1);
+ 
   if ((status = esl_msacluster_SingleLinkage(msa, cfg->idthresh1, &assignment, &nin, &nc)) != eslOK) goto ERROR;
   ctrain = esl_vec_IArgMax(nin, nc);
   ntrain = esl_vec_IMax(nin, nc);
@@ -966,11 +973,107 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
     return eslOK;
   }
 
+//DEBUG PRINTING
+        printf("\nassignment of sequences\n");
+        ESL_SQ *pseq = NULL;
+        for(i = 0; i < msa->nseq; i++) { 
+//          if(i_am_train[i]) { 
+            printf("assignment:%d, i am train:%d\n",assignment[i], i_am_train[i]);
+            esl_sq_FetchFromMSA(msa, i, &pseq);
+            esl_sqio_Write(stdout, pseq, eslSQFILE_FASTA, FALSE);
+//          }
+        }
+// END DEBUG PRINTING 
+
+
+//DEBUG PRINTING
+        printf("\ntraining sequences\n");
+        pseq = NULL;
+        for(i = 0; i < trainmsa->nseq; i++) { 
+//          if(i_am_train[i]) { 
+            esl_sq_FetchFromMSA(trainmsa, i, &pseq);
+            esl_sqio_Write(stdout, pseq, eslSQFILE_FASTA, FALSE);
+//          }
+        }
+// END DEBUG PRINTING 
+
+
+
   /* Put all the other sequences into an MSA of their own; from these, we'll
    * choose test sequences.
    */
-  for (i = 0; i < msa->nseq; i++) i_am_possibly_test[i] = (assignment[i] != ctrain) ? 1 : 0;
+//  for (i = 0; i < msa->nseq; i++) i_am_possibly_test[i] = (assignment[i] != ctrain) ? 1 : 0;
+//  if ((status = esl_msa_SequenceSubset(msa, i_am_possibly_test, &test_msa))       != eslOK) goto ERROR;
+
+  //look at each sequence and find out if it can be a test(target) sequence
+  //we have to use blast or some tool like it to measure the percent identity
+  //becuase the esl_dst_XPairId function is too simplistic and doesn't catch
+  //the situation where two sequences are almost identical but frame shifted 
+
+  printf("Determining if training sequences are greater than some percentage identical to test sequences\n");
+  for (i = 0; i < msa->nseq; i++){
+      //if the sequence is not a training sequence
+      if(assignment[i] != ctrain) {
+          //create temporary files to hold the sequencs
+          if (esl_tmpfile_named(test_seq_tmpfile, &test_seq_fp) != eslOK) esl_fatal(test_tmp_msg);
+          p_test_seq = NULL;
+          esl_sq_FetchFromMSA(msa, i, &p_test_seq);
+          esl_sqio_Write(test_seq_fp, p_test_seq, eslSQFILE_FASTA, FALSE);
+
+          //compare this sequence to every training sequence
+          //if it is more than some threshold percent identical
+          //to the training sequence then don't use this sequence
+          //as a test(target)sequence
+          for(j = 0; j < trainmsa->nseq; j++) {
+              //create temporary files to hold the sequencs
+              if (esl_tmpfile_named(train_seq_tmpfile, &train_seq_fp) != eslOK) esl_fatal(train_tmp_msg);
+              p_train_seq = NULL;
+              esl_sq_FetchFromMSA(trainmsa, j, &p_train_seq);
+              esl_sqio_Write(train_seq_fp, p_train_seq, eslSQFILE_FASTA, FALSE);
+
+              printf("Determining percent identity of sequence %s and %s\n", p_train_seq->name, p_test_seq->name);
+              status = system("percent-identity-within-threshold.sh train_seq_tmpfile test_seq_tmpfile 60");
+              //if status is 1 then the sequences are greater than 'threshold' percent similar
+              //so mark the sequence as not being a test sequence
+              if(status == 1)
+                  printf("Training sequence %s will not be used\n", p_train_seq->name);
+                  i_am_possibly_test[i] = 0;
+                  esl_sqfile_Close(train_seq_fp);
+                  remove(train_seq_tmpfile)
+                  break;
+
+              esl_sqfile_Close(train_seq_fp);
+              remove(train_seq_tmpfile)
+         }
+          //there were no training sequences more than threshold percent identical
+          //to this sequence so it can be a test sequence
+          i_am_possibly_test[i] = 1;
+          esl_sqfile_Close(test_seq_fp);
+          remove(test_seq_tmpfile);
+      }
+
+  }
+
   if ((status = esl_msa_SequenceSubset(msa, i_am_possibly_test, &test_msa))       != eslOK) goto ERROR;
+
+
+
+
+
+
+
+  if ((status = esl_msa_SequenceSubset(msa, i_am_possibly_test, &test_msa))       != eslOK) goto ERROR;
+
+//DEBUG PRINTING
+        printf("\npossible testing sequences\n");
+        pseq = NULL;
+        for(i = 0; i < test_msa->nseq; i++) { 
+//          if(i_am_possibly_test[i]) { 
+            esl_sq_FetchFromMSA(test_msa, i, &pseq);
+            esl_sqio_Write(stdout, pseq, eslSQFILE_FASTA, FALSE);
+//          }
+        }
+// END DEBUG PRINTING 
 
   /* Cluster those test sequences. */
   free(nin);         nin        = NULL;
@@ -990,7 +1093,7 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
       rnd = nskip = esl_rnd_Roll(cfg->r, nin[c]); /* pick a random seq in this cluster to be the test. */
       if (tested[rnd]) continue;
       
-//      printf("nskip: %d\n", nskip);
+      printf("nskip: %d\n", nskip);
       for (i=0, i2=0; i < msa->nseq; i++) { /* i is idx in orig msa, i2 is idx in test_msa */
         if(i_am_possibly_test[i]) { /* i is in test_msa */
           if (assignment[i2] == c) {
@@ -1001,10 +1104,10 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
                      esl_dst_XPairId(msa->abc, msa->ax[i], msa->ax[j], &pctid, NULL, NULL);
                      if (pctid >= cfg->idthresh3){
                        found = 1;
-//                       printf ("good: (%d) %d,%d = %.3f\n", c,i,j,pctid);
+                       printf ("good: (%d) %d,%d = %.3f\n", c,i,j,pctid);
                        break;
-//                     } else {
-//                     printf ("bad: (%d,%d) %d,%d = %.3f\n", c,nin[c],i,j,pctid);
+                     } else {
+                     printf ("bad: (%d,%d) %d,%d = %.3f\n", c,nin[c],i,j,pctid);
                      }
                  }  
                }
@@ -1027,6 +1130,31 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
 //  if (msa->nseq == 20) {
 //    exit(0);
 //  }
+
+//DEBUG PRINTING
+        printf("\ntraining sequences\n");
+        pseq = NULL;
+        for(i = 0; i < msa->nseq; i++) { 
+          if(i_am_train[i]) { 
+            esl_sq_FetchFromMSA(msa, i, &pseq);
+            esl_sqio_Write(stdout, pseq, eslSQFILE_FASTA, FALSE);
+          }
+        }
+// END DEBUG PRINTING 
+
+
+//DEBUG PRINTING
+        printf("\ntesting sequences\n");
+        pseq = NULL;
+        for(i = 0; i < msa->nseq; i++) { 
+          if(i_am_test[i]) { 
+            esl_sq_FetchFromMSA(msa, i, &pseq);
+            esl_sqio_Write(stdout, pseq, eslSQFILE_FASTA, FALSE);
+          }
+        }
+// END DEBUG PRINTING 
+
+
 
   esl_msa_Destroy(test_msa);
   free(nin);
