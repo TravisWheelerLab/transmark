@@ -1015,11 +1015,22 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
   //the situation where two sequences are almost identical but frame shifted 
 
   printf("Determining if training sequences are greater than some percentage identical to test sequences\n");
+
+//  if (esl_tmpfile(test_seq_tmpfile, &test_seq_fp) != eslOK) esl_fatal(test_tmp_msg);
+//  printf("created temporary file %s to hold test sequence\n", test_seq_tmpfile);
+
+//  if (esl_tmpfile(train_seq_tmpfile, &train_seq_fp) != eslOK) esl_fatal(train_tmp_msg);
+//  printf("created temporary file %s to hold training sequence\n", train_seq_tmpfile);
+
   for (i = 0; i < msa->nseq; i++){
       //if the sequence is not a training sequence
       if(assignment[i] != ctrain) {
-          //create temporary files to hold the sequencs
+          //create temporary files to hold the sequencsi
+          snprintf(test_seq_tmpfile, sizeof(test_seq_tmpfile), "%s", "esltestseqtmpXXXXXX");
           if (esl_tmpfile_named(test_seq_tmpfile, &test_seq_fp) != eslOK) esl_fatal(test_tmp_msg);
+
+//          rewind(test_seq_fp);
+
           p_test_seq = NULL;
           esl_sq_FetchFromMSA(msa, i, &p_test_seq);
           esl_sqio_Write(test_seq_fp, p_test_seq, eslSQFILE_FASTA, FALSE);
@@ -1027,13 +1038,19 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
 
           printf("created temporary file %s to hold test sequence\n", test_seq_tmpfile);
 
+          // assume initially that the sequence can be a test sequence
+          i_am_possibly_test[i] = 1;
+
           //compare this sequence to every training sequence
           //if it is more than some threshold percent identical
           //to the training sequence then don't use this sequence
           //as a test(target)sequence
           for(j = 0; j < trainmsa->nseq; j++) {
               //create temporary files to hold the sequencs
+              snprintf(train_seq_tmpfile, sizeof(train_seq_tmpfile), "%s", "esltrainseqtmpXXXXXX");
+              train_seq_fp = NULL;
               if (esl_tmpfile_named(train_seq_tmpfile, &train_seq_fp) != eslOK) esl_fatal(train_tmp_msg);
+//              rewind(train_seq_fp);
               p_train_seq = NULL;
               esl_sq_FetchFromMSA(trainmsa, j, &p_train_seq);
               esl_sqio_Write(train_seq_fp, p_train_seq, eslSQFILE_FASTA, FALSE);
@@ -1043,25 +1060,56 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
 
               printf("Determining percent identity of sequence %s and %s\n", p_train_seq->name, p_test_seq->name);
 
-
               snprintf(cmdbuf, sizeof(cmdbuf), "/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.1/rmark/percent-identity-within-threshold.sh %s %s %d %s", train_seq_tmpfile, test_seq_tmpfile, 60,
               "/data/wshands/harderpfamdnamark/transmark_benchmark_data3/ncbi-blast/ncbi-blast-2.6.0+/bin");
-              status = system(cmdbuf);
+//              status = system(cmdbuf);
+
+              float percent_identity = 0.0;
+              FILE *pp;
+              pp = popen(cmdbuf, "r");
+              if (pp != NULL) {
+                  while (1) {
+                      char *line;
+                      char buf[1000];
+                      line = fgets(buf, sizeof buf, pp);
+                      if (line == NULL) break;
+                      char * key = strstr(line, "percent_identity=");
+                      if (key) {
+                          char *sep = strchr(line, '='); 
+                          percent_identity = atof(sep+1); 
+                  //if (line[0] == 'd') printf("%s", line); /* line includes '\n' */
+                      }
+                  }
+              pclose(pp);
+              }
+
+              printf("percent identity is %3.2f \n", percent_identity);
+              if (percent_identity > 60.0) {
+                  printf("Test sequence %s will not be used since percent identity %3.2f is greater than threshold 60.00\n", p_test_seq->name, percent_identity);
+                  i_am_possibly_test[i] = 0;
+                  remove(train_seq_tmpfile);
+                  break;
+              }
+
+#if 0
               //if status is 1 then the sequences are greater than 'threshold' percent similar
               //so mark the sequence as not being a test sequence
-              if(status == 1)
-                  printf("Training sequence %s will not be used\n", p_train_seq->name);
+              printf("status returned from system call is:%d\n", status);
+              if(status == 1) {
+                  printf("Test sequence %s will not be used\n", p_test_seq->name);
                   i_am_possibly_test[i] = 0;
-                  //remove(train_seq_tmpfile);
+//                  remove(train_seq_tmpfile);
                   break;
-
-//              fclose(train_seq_fp);
-              //remove(train_seq_tmpfile);
+              }
+#endif
+              remove(train_seq_tmpfile);
           }
           //there were no training sequences more than threshold percent identical
           //to this sequence so it can be a test sequence
-          i_am_possibly_test[i] = 1;
-          //remove(test_seq_tmpfile);
+//          i_am_possibly_test[i] = 1;
+
+//          fclose(test_seq_fp);
+          remove(test_seq_tmpfile);
       }
 
   }

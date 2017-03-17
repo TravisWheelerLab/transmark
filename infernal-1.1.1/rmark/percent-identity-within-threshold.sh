@@ -7,7 +7,6 @@ set -o errexit
 
 threshold=$3
 
-#tblastn_path=../transmark_benchmark_data3/ncbi-blast/ncbi-blast-2.6.0+/bin
 tblastn_path=$4
 
 echo "creating a DB for input target sequence for tblastn to use"
@@ -15,19 +14,22 @@ ${tblastn_path}/makeblastdb -dbtype nucl -in ${1}
 
 #find the percent identity of the two sequences
 #if it is greater than the threshold return it 
-echo "using tblastx to calculate percent identity for target sequence ${2} and query sequence ${1}"
+echo "using tblastx to calculate percent identity for target sequence in file ${2} and query sequence in file ${1}"
 percent_identity=0
-percent_identity="$(${tblastn_path}/tblastx -word_size 3 -evalue 100 -db ${1} -query ${2} -outfmt '7 pident' | awk -v threshold="${threshold}" ' /^#/ {next};  $1 > threshold  { ret=$1; print ret; exit; }')"
+#percent_identity="$(${tblastn_path}/tblastx -word_size 3 -evalue 100 -db ${1} -query ${2} -outfmt '7 pident' | awk -v threshold="${threshold}" ' /^#/ {next}; $1 > threshold  { ret=$1; print ret; exit; }')"
 
-echo "percent identity of target sequence ${2} and query sequence ${1} is ${percent_identity}"
+percent_identity="$(${tblastn_path}/tblastx -word_size 3 -evalue 100 -db ${1} -query ${2} -outfmt '7 pident' | awk -v percent_iden="${percent_identity}" ' /^#/ {next}; $1 > percent_idn { percent_idn = $1 } END {print percent_idn}')"
 
-if [[ "${percent_identity}" > 0 ]] 
-then
-   echo "returning 1" 
-   exit 1
-else
-   echo "returning 0"
-   exit 0
-fi
+echo "percent_identity=${percent_identity}"
+
+#if [[ "${percent_identity}" > 0 ]] 
+#then
+#   echo "percent identity of target sequence ${2} and query sequence ${1} is ${percent_identity} which is greater than threshold of ${threshold}"
+#   echo "returning 1" 
+#   exit 1
+#else
+#   echo "returning 0"
+#   exit 0
+#fi
 
 
