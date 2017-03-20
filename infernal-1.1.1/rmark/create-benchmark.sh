@@ -14,15 +14,16 @@ set -o errexit
 #git clone https://github.com/EddyRivasLab/hmmer.git
 #git checkout translatedsearch
 #cd 
-#phmmertpath=$(pwd)/hmmer/src
+#phmmert_path=$(pwd)/hmmer/src
 
 
 
 
 
-phmmertpath=/home/um/wshands/gitroot/hmmer/src
+phmmert_path=/home/um/wshands/gitroot/hmmer-pull-test/hmmer/src
+export PATH=${phmmert_path}/../easel/miniapps:$PATH
 
-transmarkpath=/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.1/
+transmarkpath=/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.1
 
 
 if [ $# -gt 1 ]; then
@@ -61,10 +62,10 @@ sort -R --random-source all_ali_names.lst all_ali_names.lst | head -n 7362 > 736
 
 #now get the named  MSAs from the file with all the MSAs
 echo "getting the protein MSAs"
-#esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst > 7362_alignments.stk
+esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst > 7362_alignments.stk
 #also remove the '.stk.' suffix from the alignment names in the new 7362_alignments.stk file
 #this is becuase the all_filtered_ORF_alignments.stk file erroneously has the '.stk' suffix at the end of the alignment names
-esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst | awk ' {where = match($0, /#=GF ID /); if (where !=0) {split($3, basename, "."); $3 =  basename[1]; print} else {print}}' > 7362_alignments.stk
+#esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst | awk ' {where = match($0, /#=GF ID /); if (where !=0) {split($3, basename, "."); $3 =  basename[1]; print} else {print}}' > 7362_alignments.stk
 
 
 COMMENT
@@ -75,14 +76,6 @@ echo "cd'ing into the benchmark directory"
 cd $transmark_benchmark_dir
 
 
-echo "generating the DNA background benchmark with decoy shuffled ORFs inserted into the background"
-#remove the seed index file if it exists
-rm -f  ../Pfam-A.v27.seed.ssi
-
-${transmarkpath}/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk  ${transmarkpath}/rmark/rmark3-bg.hmm
-#small test background sequence
-#${transmarkpath}/rmark/rmark-create -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk  ${transmarkpath}/rmark/rmark3-bg.hmm
-
 
 echo "downloading NCBI stand alone BLAST"
 #curl -O ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
@@ -91,7 +84,15 @@ cd ncbi-blast
 curl -O ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.6.0+-x64-linux.tar.gz
 tar -xvzf ncbi-blast-2.6.0+-x64-linux.tar.gz
 cd ..
-$tblastn_path=$(pwd)/ncbi-blast/ncbi-blast-2.6.0+/bin/
+tblastn_path=$(pwd)/ncbi-blast/ncbi-blast-2.6.0+/bin/
+
+
+echo "generating the DNA background benchmark with decoy shuffled ORFs inserted into the background"
+#${transmarkpath}/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+
+#small test background sequence
+#${transmarkpath}/rmark/rmark-create -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+${transmarkpath}/rmark/rmark-create -X 0.75 -N 1 -L 100000 -R 10 -E 10 --maxtrain 30 --maxtest 20 -D ../Pfam-A.v27.seed transmarkORFandDNA ../150_alignments.stk ${tblastn_path} ${transmarkpath}/rmark/rmark3-bg.hmm
 
 echo "creating a DB for tblastn to use"
 ${tblastn_path}/makeblastdb -dbtype nucl -in transmarkORFandDNA.fa
@@ -100,7 +101,7 @@ echo "creating the file that has the amino acid MSAs that have the sequences wil
 ${transmarkpath}/../build_protein_training_seeds.pl transmarkAminoAcidTest.msa transmarkORFandDNA.msa ../Pfam-A.v27.seed
 
 echo "creating the HMMs to use as queries from the amino acid MSAs"
-${phmmertpath}/hmmbuild transmarkAminoAcidTest.hmm transmarkAminoAcidTest.msa
+${phmmert_path}/hmmbuild transmarkAminoAcidTest.hmm transmarkAminoAcidTest.msa
 
 
 echo "making the phmmert result directory"
