@@ -147,7 +147,7 @@ struct cfg_s {
 
 static int process_dbfile       (struct cfg_s *cfg, char *dbfile, int dbfmt);
 static int remove_fragments     (struct cfg_s *cfg, ESL_MSA *msa, ESL_MSA **ret_filteredmsa, int *ret_nfrags);
-static int separate_sets        (struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i_am_test, char * blast_bin_path);
+static int separate_sets        (struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i_am_test, char * blast_bin_path, char* esl_miniapps_path);
 static int find_sets_greedily   (struct cfg_s *cfg, ESL_MSA *msa, int do_xtest, int **ret_i_am_train, int **ret_i_am_test);
 static int find_sets_by_sampling(struct cfg_s *cfg, ESL_MSA *msa, int nsamples, int do_xtest, int **ret_i_am_train, int **ret_i_am_test);
 //static int synthesize_negatives_and_embed_positives(ESL_GETOPTS *go, struct cfg_s *cfg, ESL_SQ **posseqs, int npos);
@@ -254,6 +254,7 @@ main(int argc, char **argv)
   char *        ssifile = NULL; 
   
   char *        blast_bin_path = NULL;
+  char *        esl_miniapps_path = NULL;
   
   /* Parse command line */
   go = esl_getopts_Create(options);
@@ -261,18 +262,18 @@ main(int argc, char **argv)
   if (esl_opt_VerifyConfig(go)               != eslOK) cmdline_failure(argv[0], "Error in app configuration:   %s\n", go->errbuf);
   if (esl_opt_GetBoolean(go, "-h"))                    cmdline_help(argv[0], go);
 
-  if ((  esl_opt_GetBoolean(go, "--iid") && esl_opt_ArgNumber(go) != 3) || 
-      (! esl_opt_GetBoolean(go, "--iid") && esl_opt_ArgNumber(go) != 4)) { 
+  if ((  esl_opt_GetBoolean(go, "--iid") && esl_opt_ArgNumber(go) != 4) || 
+      (! esl_opt_GetBoolean(go, "--iid") && esl_opt_ArgNumber(go) != 5)) { 
     cmdline_failure(argv[0], "Incorrect number of command line arguments\n");
   }
   basename = esl_opt_GetArg(go, 1); 
   alifile  = esl_opt_GetArg(go, 2);
   blast_bin_path  = esl_opt_GetArg(go, 3);
-
+  esl_miniapps_path = esl_opt_GetArg(go, 4);
 
   if(! esl_opt_GetBoolean(go, "--iid")) { 
-    if(esl_opt_GetBoolean(go, "-S")) dbfile  = esl_opt_GetArg(go, 4);
-    else                             hmmfile = esl_opt_GetArg(go, 4);
+    if(esl_opt_GetBoolean(go, "-S")) dbfile  = esl_opt_GetArg(go, 5);
+    else                             hmmfile = esl_opt_GetArg(go, 5);
   }
   alifmt   = eslMSAFILE_STOCKHOLM;
   dbfmt    = eslSQFILE_FASTA;
@@ -477,7 +478,7 @@ main(int argc, char **argv)
        *  - more than cfg->idthresh2 similar to >=1 sequences in the test set
       */
       if(! esl_opt_GetBoolean(go, "--skip")) { 
-        separate_sets (&cfg, msa, &i_am_train, &i_am_test, blast_bin_path);
+        separate_sets (&cfg, msa, &i_am_train, &i_am_test, blast_bin_path, esl_miniapps_path);
         ntrainseq = esl_vec_ISum(i_am_train, msa->nseq);
         ntestseq  = esl_vec_ISum(i_am_test,  msa->nseq);
       }
@@ -925,8 +926,8 @@ remove_fragments(struct cfg_s *cfg, ESL_MSA *msa, ESL_MSA **ret_filteredmsa, int
  *          ret_i_am_test  - [0..msa->nseq-1]: 1 if a test seq, 0 if not 
  */
 static int
-separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i_am_test, char * blast_bin_path)
-{      
+separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i_am_test, char * blast_bin_path, char * esl_miniapps_path)
+{
   ESL_MSA   *trainmsa  = NULL;
   ESL_MSA   *test_msa  = NULL;
   int *assignment = NULL;
@@ -950,14 +951,19 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
   ESL_SQ * p_train_seq = NULL;
 
   char       removed_test_sequences_file[32] = "removed_test_sequences.txt";
-  char       train_seq_tmpfile[32] = "esltrainseqtmpXXXXXX";
+  char       train_seq_tmpfile[256] = "esltrainsequences";
   char       test_seq_tmpfile[32] = "esltestseqtmpXXXXXX";
+  char       train_msa_tmpfile[32] = "esltrainmsatmpXXXXXX";
+
   char       remove_file_buf[256];
 
+  char       *train_msa_tmp_msg         = "failed to create temp file to hold training msa";
   char       *train_tmp_msg         = "failed to create temp file to hold training seq";
   char       *test_tmp_msg         = "failed to create temp file to hold test seq";
   FILE       *test_seq_fp          = NULL;
   FILE       *train_seq_fp          = NULL;
+  FILE       *train_msa_fp         = NULL;
+
   FILE       *removed_test_sequences_fp = NULL;
   char cmdbuf[256];
 
@@ -1048,11 +1054,13 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
           // assume initially that the sequence can be a test sequence
           i_am_possibly_test[i] = 1;
 
+#if 0
           //compare this sequence to every training sequence
           //if it is more than some threshold percent identical
           //to the training sequence then don't use this sequence
           //as a test(target)sequence
           for(j = 0; j < trainmsa->nseq; j++) {
+
               //create a temporary file to hold the training sequence
               snprintf(train_seq_tmpfile, sizeof(train_seq_tmpfile), "%s", "esltrainseqtmpXXXXXX");
               train_seq_fp = NULL;
@@ -1061,15 +1069,21 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
               esl_sq_FetchFromMSA(trainmsa, j, &p_train_seq);
               esl_sqio_Write(train_seq_fp, p_train_seq, eslSQFILE_FASTA, FALSE);
               fclose(train_seq_fp);
-
+#endif
               //printf("created temporary file %s to hold training sequence\n", train_seq_tmpfile);
 
               //printf("Determining percent identity of training sequence %s and test sequence %s\n", p_train_seq->name, p_test_seq->name);
-#if 0
-              snprintf(cmdbuf, sizeof(cmdbuf), "/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.1/rmark/percent-identity-within-threshold.sh %s %s %d %s", train_seq_tmpfile, test_seq_tmpfile, 60,
-              "/data/wshands/harderpfamdnamark/transmark_benchmark_data3/ncbi-blast/ncbi-blast-2.6.0+/bin");
 
-              float percent_identity = 0.0;
+              //create a temporary file to hold the MSA
+              snprintf(train_msa_tmpfile, sizeof(train_msa_tmpfile), "%s", "esltrainmsatmpXXXXXX");
+              train_msa_fp = NULL;
+              if (esl_tmpfile_named(train_msa_tmpfile, &train_msa_fp) != eslOK) esl_fatal(train_msa_tmp_msg);
+              eslx_msafile_Write(train_msa_fp, trainmsa, eslMSAFILE_STOCKHOLM);
+              fclose(train_msa_fp);
+
+              snprintf(train_seq_tmpfile, sizeof(train_seq_tmpfile), "%s%s", trainmsa->name, "_trainseqs");
+
+              snprintf(cmdbuf, sizeof(cmdbuf), "%s/esl-reformat -o %s fasta  %s", esl_miniapps_path, train_seq_tmpfile, train_msa_tmpfile);
               FILE *pp;
               pp = popen(cmdbuf, "r");
               if (pp != NULL) {
@@ -1078,32 +1092,32 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
                       char buf[1000];
                       line = fgets(buf, sizeof buf, pp);
                       if (line == NULL) break;
-                      char * key = strstr(line, "percent_identity=");
-                      if (key) {
-                          char *sep = strchr(line, '='); 
-                          percent_identity = atof(sep+1); 
-                      }
+                      printf("line:%s\n",line);
                   }
               pclose(pp);
+              }
+
+
+
+
+
+              snprintf(cmdbuf, sizeof(cmdbuf), "%s/makeblastdb -dbtype nucl -in %s", blast_bin_path, train_seq_tmpfile);
+              FILE *ppdb;
+              ppdb = popen(cmdbuf, "r");
+#if 0
+              if (ppdb != NULL) {
+                  while (1) {
+                      char *line;
+                      char buf[1000];
+                      line = fgets(buf, sizeof buf, ppdb);
+                      if (line == NULL) break;
+                      printf("line:%s\n",line);
+                  }
+              pclose(ppdb);
               }
 #endif
 
-              snprintf(cmdbuf, sizeof(cmdbuf), "%s/makeblastdb -dbtype nucl -in %s", blast_bin_path, train_seq_tmpfile);
-              FILE *pp;
-              pp = popen(cmdbuf, "r");
-              if (pp != NULL) {
-                  while (1) {
-                      char *line;
-                      char buf[1000];
-                      line = fgets(buf, sizeof buf, pp);
-                      if (line == NULL) break;
-                      //printf("line:%s\n",line);
-                  }
-              pclose(pp);
-              }
-
-
-              snprintf(cmdbuf, sizeof(cmdbuf), "%s//tblastx -word_size 3 -evalue 100 -db %s -query %s -outfmt '7 pident'", blast_bin_path, train_seq_tmpfile, test_seq_tmpfile);
+              snprintf(cmdbuf, sizeof(cmdbuf), "%s/tblastx -word_size 3 -evalue 100 -db %s -query %s -outfmt '7 pident'", blast_bin_path, train_seq_tmpfile, test_seq_tmpfile);
               //printf("cmd: %s\n",cmdbuf);
 
               float percent_identity = 0.0;
@@ -1128,8 +1142,25 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
               else
                 printf("output of tblastx not found\n");
 
+              if (percent_identity > 60.0) {
+                  //printf("Test sequence %s will not be used since percent identity %3.2f is greater than threshold 60.00\n", p_test_seq->name, percent_identity);
+                  i_am_possibly_test[i] = 0;
+                  fprintf(removed_test_sequences_fp, "%s\n",p_test_seq->name);
+
+              } 
+              remove(train_seq_tmpfile);
+
+              snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nin");
+              remove(remove_file_buf);
+              snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nsq");
+              remove(remove_file_buf);
+              snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nhr");
+              remove(remove_file_buf);
+
+              remove(train_msa_tmpfile);
 
 
+#if 0
               //printf("percent identity is %3.2f \n", percent_identity);
               if (percent_identity > 60.0) {
                   //printf("Test sequence %s will not be used since percent identity %3.2f is greater than threshold 60.00\n", p_test_seq->name, percent_identity);
@@ -1159,6 +1190,7 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
 
 
           }
+#endif
           remove(test_seq_tmpfile);
       }
   }

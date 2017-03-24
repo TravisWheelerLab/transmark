@@ -21,6 +21,8 @@ set -o errexit
 
 
 phmmert_path=/home/um/wshands/gitroot/hmmer-pull-test/hmmer/src
+esl_miniapps_path=${phmmert_path}/../easel/miniapps
+
 export PATH=${phmmert_path}/../easel/miniapps:$PATH
 
 transmarkpath=/home/um/wshands/TravisWheelerLabTransMark/transmark/infernal-1.1.1
@@ -88,11 +90,11 @@ tblastn_path=$(pwd)/ncbi-blast/ncbi-blast-2.6.0+/bin/
 
 
 echo "generating the DNA background benchmark with decoy shuffled ORFs inserted into the background"
-#${transmarkpath}/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+#${transmarkpath}/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
 
-#small test background sequence
-#${transmarkpath}/rmark/rmark-create -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${transmarkpath}/rmark/rmark3-bg.hmm
-${transmarkpath}/rmark/rmark-create -X 0.75 -N 1 -L 100000 -R 10 -E 10 --maxtrain 30 --maxtest 20 -D ../Pfam-A.v27.seed transmarkORFandDNA ../150_alignments.stk ${tblastn_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+#smaller test background sequence
+${transmarkpath}/rmark/rmark-create -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+#${transmarkpath}/rmark/rmark-create -X 0.75 -N 1 -L 100000 -R 10 -E 10 --maxtrain 30 --maxtest 20 -D ../Pfam-A.v27.seed transmarkORFandDNA ../150_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
 
 echo "creating a DB for tblastn to use"
 ${tblastn_path}/makeblastdb -dbtype nucl -in transmarkORFandDNA.fa

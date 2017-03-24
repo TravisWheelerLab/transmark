@@ -55,7 +55,7 @@ foreach my $ali (@names) {
   #sequences planted in the background sequence by rmark-create
   do_cmd ("esl-alimanip --seq-k $ali.filter.names $ali.pfam.sto >> $protfile");
 
-  #`rm $ali.*`;
+  `rm $ali.*`;
 }
 
 
