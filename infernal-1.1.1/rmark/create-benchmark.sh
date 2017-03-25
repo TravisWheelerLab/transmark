@@ -180,7 +180,7 @@ do
 done
 
 mkdir exonerate.cons
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${exonerate_path} exonerate.cons ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${exonerate_path} exonerate.cons ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-cons  1000000
 
 
 #wait until the running jobs have finished (there is no output from qstat)
@@ -195,7 +195,7 @@ ${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1
 ${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1
 ${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100.cons 1
 ${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1
-
+${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.cons 1
 
 ${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1 .orf
 ${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 .orf
