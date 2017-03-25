@@ -255,7 +255,10 @@ main(int argc, char **argv)
   
   char *        blast_bin_path = NULL;
   char *        esl_miniapps_path = NULL;
-  
+
+  int           num_msas_to_process = 0;
+  int           current_msa_number = 0;
+
   /* Parse command line */
   go = esl_getopts_Create(options);
   if (esl_opt_ProcessCmdline(go, argc, argv) != eslOK) cmdline_failure(argv[0], "Failed to parse command line: %s\n", go->errbuf);
@@ -445,7 +448,7 @@ main(int argc, char **argv)
       num_decoy_msa_names++;             
       esl_msa_Destroy(decoymsa);
     }
-    printf("rmark-create: Found %d alignments in %s\n", num_decoy_msa_names, decoyfile);
+    printf("rmark-create: Found %d alignments in decoy MSA %s\n", num_decoy_msa_names, decoyfile);
   }
   
   if (cfg.abc->type == eslAMINO) esl_composition_SW34(cfg.fq);
@@ -455,17 +458,39 @@ main(int argc, char **argv)
   if(hmmfile != NULL) read_hmmfile(hmmfile, &(cfg.hmm));
   if(dbfile != NULL)  process_dbfile(&cfg, dbfile, dbfmt);
 
+
+  //count the number of MSAs to process so we can print status message to user
+  num_msas_to_process = 0;
+  while ((status = eslx_msafile_Read(afp, &origmsa)) != eslEOF)
+  {
+    if (status != eslOK) 
+      eslx_msafile_ReadFailure(afp, status);
+    num_msas_to_process++;
+    esl_msa_Destroy(origmsa);
+  }
+  eslx_msafile_Close(afp);
+
+  printf("rmark-create: Found %d alignments in %s\n", num_msas_to_process, alifile);
+
+  // reopen the alignment file to so we can start reading the MSAs
+  // and reset the file pointer to the beginning of the file
+  if((status = eslx_msafile_Open(&(cfg.abc), alifile, NULL, alifmt, NULL, &afp)) != eslOK) { 
+    eslx_msafile_OpenFailure(afp, status);
+  }
+
   /* Read and process MSAs one at a time  */
   nali = 0; 
   npos = 0;
   poslen_total = 0;
+  current_msa_number = 0;
   while ((status = eslx_msafile_Read(afp, &origmsa)) == eslOK)
     {
       npos_this_msa = 0;
       if(origmsa->name == NULL) esl_fatal("All msa's must have a valid name (#=GC ID), alignment %d does not.", nali);
       esl_msa_ConvertDegen2X(origmsa); 
 
-      printf("rmark-create: Processing %s MSA to get training and test sets\n", origmsa->name);
+      current_msa_number++;
+      printf("\n\nrmark-create: Processing %s MSA to get training and test sets; %d of %d\n", origmsa->name, current_msa_number, num_msas_to_process);
 
       remove_fragments(&cfg, origmsa, &msa, &nfrags);
 
@@ -1035,15 +1060,36 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
   if ((removed_test_sequences_fp = fopen(removed_test_sequences_file, "a")) == NULL)  
       esl_fatal("Failed to open removed test sequences file %s\n", removed_test_sequences_file);  
 
-  printf("rmark-create: Determining if training sequences are greater than some percentage identical to test sequences\n");
+  printf("rmark-create: Determining if training sequences in MSA %s are greater than some percentage identical to test sequences\n", msa->name);
 
+
+  //create a temporary file to hold the MSA
+  snprintf(train_msa_tmpfile, sizeof(train_msa_tmpfile), "%s", "esltrainmsatmpXXXXXX");
+  train_msa_fp = NULL;
+  if (esl_tmpfile_named(train_msa_tmpfile, &train_msa_fp) != eslOK) esl_fatal(train_msa_tmp_msg);
+  eslx_msafile_Write(train_msa_fp, trainmsa, eslMSAFILE_STOCKHOLM);
+  fclose(train_msa_fp);
+
+  snprintf(train_seq_tmpfile, sizeof(train_seq_tmpfile), "%s%s", trainmsa->name, "_trainseqs");
+  // write the training sequences in the MSA to a file
+  snprintf(cmdbuf, sizeof(cmdbuf), "%s/esl-reformat -o %s fasta  %s", esl_miniapps_path, train_seq_tmpfile, train_msa_tmpfile);
+//  printf("cmd: %s\n",cmdbuf);
+  system(cmdbuf);
+
+  // create a blast DB for the training sequence file
+  snprintf(cmdbuf, sizeof(cmdbuf), "%s/makeblastdb -dbtype nucl -in %s", blast_bin_path, train_seq_tmpfile);
+//  printf("cmd: %s\n",cmdbuf);
+  system(cmdbuf);
+
+  // for each sequence
   for (i = 0; i < msa->nseq; i++){
-      //if the sequence is not a training sequence
+      //if the sequence is not a training sequence it is a potential test sequence
       if(assignment[i] != ctrain) {
           //create a temporary file to hold the test sequence
           snprintf(test_seq_tmpfile, sizeof(test_seq_tmpfile), "%s", "esltestseqtmpXXXXXX");
           if (esl_tmpfile_named(test_seq_tmpfile, &test_seq_fp) != eslOK) esl_fatal(test_tmp_msg);
 
+          // get the potential test sequence from the MSA
           p_test_seq = NULL;
           esl_sq_FetchFromMSA(msa, i, &p_test_seq);
           esl_sqio_Write(test_seq_fp, p_test_seq, eslSQFILE_FASTA, FALSE);
@@ -1054,153 +1100,60 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
           // assume initially that the sequence can be a test sequence
           i_am_possibly_test[i] = 1;
 
-#if 0
-          //compare this sequence to every training sequence
-          //if it is more than some threshold percent identical
-          //to the training sequence then don't use this sequence
-          //as a test(target)sequence
-          for(j = 0; j < trainmsa->nseq; j++) {
+          // find out if the potential test sequence is more than some threshold percent identical to any other training sequence
+          // if it is then throw it out we don't want to use it as a test sequence
+          snprintf(cmdbuf, sizeof(cmdbuf), "%s/tblastx -word_size 3 -evalue 100 -db %s -query %s -outfmt '7 pident'", blast_bin_path, train_seq_tmpfile, test_seq_tmpfile);
+//        printf("cmd: %s\n",cmdbuf);
 
-              //create a temporary file to hold the training sequence
-              snprintf(train_seq_tmpfile, sizeof(train_seq_tmpfile), "%s", "esltrainseqtmpXXXXXX");
-              train_seq_fp = NULL;
-              if (esl_tmpfile_named(train_seq_tmpfile, &train_seq_fp) != eslOK) esl_fatal(train_tmp_msg);
-              p_train_seq = NULL;
-              esl_sq_FetchFromMSA(trainmsa, j, &p_train_seq);
-              esl_sqio_Write(train_seq_fp, p_train_seq, eslSQFILE_FASTA, FALSE);
-              fclose(train_seq_fp);
-#endif
-              //printf("created temporary file %s to hold training sequence\n", train_seq_tmpfile);
-
-              //printf("Determining percent identity of training sequence %s and test sequence %s\n", p_train_seq->name, p_test_seq->name);
-
-              //create a temporary file to hold the MSA
-              snprintf(train_msa_tmpfile, sizeof(train_msa_tmpfile), "%s", "esltrainmsatmpXXXXXX");
-              train_msa_fp = NULL;
-              if (esl_tmpfile_named(train_msa_tmpfile, &train_msa_fp) != eslOK) esl_fatal(train_msa_tmp_msg);
-              eslx_msafile_Write(train_msa_fp, trainmsa, eslMSAFILE_STOCKHOLM);
-              fclose(train_msa_fp);
-
-              snprintf(train_seq_tmpfile, sizeof(train_seq_tmpfile), "%s%s", trainmsa->name, "_trainseqs");
-
-              snprintf(cmdbuf, sizeof(cmdbuf), "%s/esl-reformat -o %s fasta  %s", esl_miniapps_path, train_seq_tmpfile, train_msa_tmpfile);
-              FILE *pp;
-              pp = popen(cmdbuf, "r");
-              if (pp != NULL) {
-                  while (1) {
-                      char *line;
-                      char buf[1000];
-                      line = fgets(buf, sizeof buf, pp);
-                      if (line == NULL) break;
-                      printf("line:%s\n",line);
-                  }
-              pclose(pp);
+          float percent_identity = 0.0;
+          float max_percent_identity = 0.0;
+          FILE *ppt;
+          ppt = popen(cmdbuf, "r");
+          if (ppt != NULL) {
+              while (1) {
+                  char *line;
+                  char buf[1000];
+                  line = fgets(buf, sizeof buf, ppt);
+                  if (line == NULL) break;
+                  //printf("line:%s\n",line);
+                  if (line[0] == '#') continue;
+                  percent_identity = atof(line);
+                  if (percent_identity > max_percent_identity)
+                      max_percent_identity = percent_identity; 
               }
-
-
-
-
-
-              snprintf(cmdbuf, sizeof(cmdbuf), "%s/makeblastdb -dbtype nucl -in %s", blast_bin_path, train_seq_tmpfile);
-              FILE *ppdb;
-              ppdb = popen(cmdbuf, "r");
-#if 0
-              if (ppdb != NULL) {
-                  while (1) {
-                      char *line;
-                      char buf[1000];
-                      line = fgets(buf, sizeof buf, ppdb);
-                      if (line == NULL) break;
-                      printf("line:%s\n",line);
-                  }
-              pclose(ppdb);
-              }
-#endif
-
-              snprintf(cmdbuf, sizeof(cmdbuf), "%s/tblastx -word_size 3 -evalue 100 -db %s -query %s -outfmt '7 pident'", blast_bin_path, train_seq_tmpfile, test_seq_tmpfile);
-              //printf("cmd: %s\n",cmdbuf);
-
-              float percent_identity = 0.0;
-              float max_percent_identity = 0.0;
-              FILE *ppt;
-              ppt = popen(cmdbuf, "r");
-              if (ppt != NULL) {
-                  while (1) {
-                      char *line;
-                      char buf[1000];
-                      line = fgets(buf, sizeof buf, ppt);
-                      if (line == NULL) break;
-                      //printf("line:%s\n",line);
-                      if (line[0] == '#') continue;
-                      percent_identity = atof(line);
-                      if (percent_identity > max_percent_identity)
-                          max_percent_identity = percent_identity; 
-                  }
               pclose(ppt);
               percent_identity = max_percent_identity;
-              }
-              else
-                printf("output of tblastx not found\n");
-
-              if (percent_identity > 60.0) {
-                  //printf("Test sequence %s will not be used since percent identity %3.2f is greater than threshold 60.00\n", p_test_seq->name, percent_identity);
-                  i_am_possibly_test[i] = 0;
-                  fprintf(removed_test_sequences_fp, "%s\n",p_test_seq->name);
-
-              } 
-              remove(train_seq_tmpfile);
-
-              snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nin");
-              remove(remove_file_buf);
-              snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nsq");
-              remove(remove_file_buf);
-              snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nhr");
-              remove(remove_file_buf);
-
-              remove(train_msa_tmpfile);
-
-
-#if 0
-              //printf("percent identity is %3.2f \n", percent_identity);
-              if (percent_identity > 60.0) {
-                  //printf("Test sequence %s will not be used since percent identity %3.2f is greater than threshold 60.00\n", p_test_seq->name, percent_identity);
-                  i_am_possibly_test[i] = 0;
-
-                  fprintf(removed_test_sequences_fp, "%s\n",p_test_seq->name);
-
-                  remove(train_seq_tmpfile);
-
-                  snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nin");
-                  remove(remove_file_buf);
-                  snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nsq");
-                  remove(remove_file_buf);
-                  snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nhr");
-                  remove(remove_file_buf);
-
-                  break;
-              }
-              remove(train_seq_tmpfile);
-
-              snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nin");
-              remove(remove_file_buf);
-              snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nsq");
-              remove(remove_file_buf);
-              snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nhr");
-              remove(remove_file_buf);
-
-
           }
-#endif
+          else
+              printf("ERROR: Output of tblastx not found\n");
+
+          if (percent_identity > 60.0) {
+              //printf("Test sequence %s will not be used since percent identity %3.2f is greater than threshold 60.00\n", p_test_seq->name, percent_identity);
+              i_am_possibly_test[i] = 0;
+              fprintf(removed_test_sequences_fp, "%s\n",p_test_seq->name);
+          }
+
           remove(test_seq_tmpfile);
       }
   }
+
+  remove(train_seq_tmpfile);
+
+  snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nin");
+  remove(remove_file_buf);
+  snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nsq");
+  remove(remove_file_buf);
+  snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nhr");
+  remove(remove_file_buf);
+
+  remove(train_msa_tmpfile);
 
   if (removed_test_sequences_fp != NULL)
       fclose(removed_test_sequences_fp);
 
   //if there are no sequences left in the test set then we are done
   if (esl_vec_ISum(i_am_possibly_test, msa->nseq) == 0) {
-    printf("rmark-create: Cannot use msa %s; no training sequences are different enough from test sequences\n", msa->name);
+    printf("\nrmark-create: Cannot use MSA %s; no training sequences are different enough from test sequences\n", msa->name);
     esl_vec_ISet(i_am_train, msa->nseq, 0);
     esl_vec_ISet(i_am_test,  msa->nseq, 0);
     free(assignment);
