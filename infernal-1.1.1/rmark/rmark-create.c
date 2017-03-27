@@ -1102,7 +1102,8 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
 
           // find out if the potential test sequence is more than some threshold percent identical to any other training sequence
           // if it is then throw it out we don't want to use it as a test sequence
-          snprintf(cmdbuf, sizeof(cmdbuf), "%s/tblastx -word_size 3 -evalue 100 -db %s -query %s -outfmt '7 pident'", blast_bin_path, train_seq_tmpfile, test_seq_tmpfile);
+#if 0
+          snprintf(cmdbuf, sizeof(cmdbuf), "%s/blastn -word_size 4 -evalue 100 -db %s -query %s -outfmt '7 pident'", blast_bin_path, train_seq_tmpfile, test_seq_tmpfile);
 //        printf("cmd: %s\n",cmdbuf);
 
           float percent_identity = 0.0;
@@ -1125,10 +1126,55 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
               percent_identity = max_percent_identity;
           }
           else
-              printf("ERROR: Output of tblastx not found\n");
+              printf("ERROR: Output of blastn not found\n");
+#endif
+
+          snprintf(cmdbuf, sizeof(cmdbuf), "%s/blastn -word_size 4 -evalue 100 -db %s -query %s -outfmt '10 pident length qlen'", blast_bin_path, train_seq_tmpfile, test_seq_tmpfile);
+//        printf("cmd: %s\n",cmdbuf);
+
+          float percent_identity = 0.0;
+          float max_percent_identity = 0.0;
+          int   query_length = 0;
+          int   alignment_length = 0;
+          FILE *ppt;
+          ppt = popen(cmdbuf, "r");
+          if (ppt != NULL) {
+              while (1) {
+                  char *line;
+                  char buf[1000];
+                  line = fgets(buf, sizeof buf, ppt);
+                  if (line == NULL) break;
+                  //printf("line:%s\n",line);
+                  if (line[0] == '#') continue;
+                  char * pch;
+                  pch = strtok (line,",");
+                  if (pch != NULL) {
+                      percent_identity = atof(pch);
+                      pch = strtok (NULL, ",");
+                      alignment_length = atoi(pch);
+                      pch = strtok (NULL, ",");
+                      query_length = atoi(pch);
+                      //if the alignment is almost as long as the query sequence length
+                      //then consider the percent identity; we don't want to use the percent
+                      //identity of a small local alignment as representative of 
+                      //the percent identity of the sequences
+                      if ( alignment_length > .9 * query_length) {
+                          if (percent_identity > max_percent_identity)
+                              max_percent_identity = percent_identity;
+                      }
+                  }
+                  else
+                      printf("ERROR: Cannot process output in calculating percent identity\n");
+              }
+              pclose(ppt);
+              percent_identity = max_percent_identity;
+          }
+          else
+              printf("ERROR: Output of blastn not found\n");
+
 
           if (percent_identity > 60.0) {
-              //printf("Test sequence %s will not be used since percent identity %3.2f is greater than threshold 60.00\n", p_test_seq->name, percent_identity);
+              printf("Test sequence %s will not be used since percent identity %3.2f is greater than threshold 60.00\n", p_test_seq->name, percent_identity);
               i_am_possibly_test[i] = 0;
               fprintf(removed_test_sequences_fp, "%s\n",p_test_seq->name);
           }
