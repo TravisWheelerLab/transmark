@@ -1083,6 +1083,8 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
 
   // for each sequence
   for (i = 0; i < msa->nseq; i++){
+      //first assume it is not a test sequence; we will find out below if it actual is a test sequence
+      i_am_possibly_test[i] = 0;
       //if the sequence is not a training sequence it is a potential test sequence
       if(assignment[i] != ctrain) {
           //create a temporary file to hold the test sequence

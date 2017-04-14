@@ -42,7 +42,7 @@ foreach my $ali (@names) {
   # clean this up:
   do_cmd (qq[awk 'BEGIN{FS="|"} {if ( \$2 == \'\\n\' )  print \$1; else print \$2}' $ali.dna.names > $ali.dna.names2]);
 
-  #get a list of (target) sequence names that are in the DNA multiple alignment
+  #get a list of sequence names that are in the DNA multiple alignment
   #and also in the amino acid multiple alignment
   do_cmd ("grep -f $ali.dna.names2 $ali.pfam.names > $ali.filter.names");
 
