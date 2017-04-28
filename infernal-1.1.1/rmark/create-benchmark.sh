@@ -70,7 +70,8 @@ esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst > 7362_alignme
 #esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst | awk ' {where = match($0, /#=GF ID /); if (where !=0) {split($3, basename, "."); $3 =  basename[1]; print} else {print}}' > 7362_alignments.stk
 
 
-COMMENT
+
+
 
 echo "making the benchmark directory"
 mkdir $transmark_benchmark_dir
@@ -105,6 +106,7 @@ ${transmarkpath}/../build_protein_training_seeds.pl transmarkAminoAcidTest.msa t
 echo "creating the HMMs to use as queries from the amino acid MSAs"
 ${phmmert_path}/hmmbuild transmarkAminoAcidTest.hmm transmarkAminoAcidTest.msa
 
+COMMENT
 
 echo "making the phmmert result directory"
 mkdir ptr.std.e100
@@ -113,7 +115,7 @@ mkdir ptr.std.e100
 #otherwise the script will try to write to the directory possibly before it is created and you will loose
 #result data
 echo "running the phmmert search against the benchmark"
-perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcidTest.hmm  $phmmert_path ${transmarkpath}/rmark ${transmarkpath}/rmark ptr.std.e100 ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcidTest.hmm  $phmmert_path ${transmarkpath}/rmark  ptr.std.e100 ptr.std.e100 ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert  1000000
 
 
 
@@ -125,7 +127,8 @@ do
 done
 
 #echo before comment
-#: <<'COMMENT'
+
+: <<'COMMENT'
 
 mkdir tbn.w3.e100.cons
 perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.cons ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-cons 1000000
@@ -150,7 +153,7 @@ done
 COMMENT
 
 mkdir ptr.std.e100.cons
-perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -G transmarkAminoAcidTest  $phmmert_path ${transmarkpath}/rmark ${transmarkpath}/rmark ptr.std.e100.cons ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert-cons  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -G transmarkAminoAcidTest  $phmmert_path ${transmarkpath}/rmark  ptr.std.e100.cons ptr.std.e100.cons ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert-cons  1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for phmmert cons to finish; press [CTRL+C] to stop.."
