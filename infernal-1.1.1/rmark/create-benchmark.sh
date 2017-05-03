@@ -71,6 +71,7 @@ esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst > 7362_alignme
 
 
 
+COMMENT
 
 
 echo "making the benchmark directory"
@@ -106,7 +107,6 @@ ${transmarkpath}/../build_protein_training_seeds.pl transmarkAminoAcidTest.msa t
 echo "creating the HMMs to use as queries from the amino acid MSAs"
 ${phmmert_path}/hmmbuild transmarkAminoAcidTest.hmm transmarkAminoAcidTest.msa
 
-COMMENT
 
 echo "making the phmmert result directory"
 mkdir ptr.std.e100
@@ -128,7 +128,6 @@ done
 
 #echo before comment
 
-: <<'COMMENT'
 
 mkdir tbn.w3.e100.cons
 perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.cons ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-cons 1000000
@@ -150,7 +149,6 @@ do
   sleep 1
 done
 
-COMMENT
 
 mkdir ptr.std.e100.cons
 perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -G transmarkAminoAcidTest  $phmmert_path ${transmarkpath}/rmark  ptr.std.e100.cons ptr.std.e100.cons ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert-cons  1000000
@@ -201,6 +199,9 @@ done
 
 #COMMENT2
 
+echo before comment
+: <<'COMMENT'
+
 
 ${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1
 ${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1
@@ -213,9 +214,7 @@ ${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1 .orf
 ${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 .orf
 ${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1 .orf
 
-
-echo before comment
-: <<'COMMENT'
+COMMENT
 
 #gather statistics for how many positive embedded squences were found by the search tools
 my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1" 1
@@ -291,5 +290,4 @@ do
   sleep 1
 done
 
-COMMENT
 

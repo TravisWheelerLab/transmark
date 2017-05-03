@@ -7,7 +7,7 @@ ls $2/*.time   | perl $scriptdir/rmark-time.pl > $2/$2.time
 # get MER
 cat $2/*out$4 | perl $scriptdir/rmark-multiply-evalues.pl $3 | sort -g | perl  $scriptdir/rmark-mer.pl $1.pos$4 $2/$2.time >  $2/$2.mer$4 #$2/$2.em$3.mer
 # get ROC
-#cat $2/*out$4 | perl $scriptdir/rmark-multiply-evalues.pl $3 | sort -g | $scriptdir/rmark-rocplot -N 10000 --seed 181 $1 - > $2/$2.xy$4 #$2/$2.em$3.xy
+cat $2/*out$4 | perl $scriptdir/rmark-multiply-evalues.pl $3 | sort -g | $scriptdir/rmark-rocplot -N 10000 --seed 181 $1 - > $2/$2.xy$4 #$2/$2.em$3.xy
 # get mer from rmark-rocplot
 #cat $2/*out$4 | perl $scriptdir/rmark-multiply-evalues.pl $3 | sort -g | $scriptdir/rmark-rocplot -N 10000 --mer --seed 181 $1 - > $2/$2.bmer$4 # $2/$2.em$3.bmer
 # get numbers of false negatives and false positives at E-threshold of 0.1 from rmark-rocplot (after E-value inflation)
@@ -18,7 +18,7 @@ cat $2/*out$4 | perl $scriptdir/rmark-multiply-evalues.pl $3 | sort -g | perl  $
 cp $2/$2.mer$4 ./
 #cp $2/$2.bmer$4 ./
 cp $2/$2.time ./
-#cp $2/$2.xy$4 ./
+cp $2/$2.xy$4 ./
 
 
 # summarize files to stdout
