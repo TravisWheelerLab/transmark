@@ -60,7 +60,7 @@ cp hmmbutnofpwlogevaluediff logevaluediff
 Rscript --vanilla  ${plot_src_path}/plot.POShitsHistogram.R fpw no
 
 echo "creating sensitivity ROC plot"
-perl ${plot_src_path}/transmark-Rroc.pl -R ${plot_src_path}/../listfiles/pfamtransDNAmark.ROC.list phmmert_ROC_plot.pdf 0 "Sensitivity ROC plot"
+perl ${plot_src_path}/transmark-Rroc.pl -R ${plot_src_path}/../listfiles/transmarkORFandDNA.ROC.list phmmert_ROC_plot.pdf 0 "Sensitivity ROC plot"
 
 
 

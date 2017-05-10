@@ -257,11 +257,21 @@ done
 my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering exonerate statistics; press [CTRL+C] to stop.."
+echo "Gathering exonerate fpw statistics; press [CTRL+C] to stop.."
 while [[ $(qstat -u wshands) ]]
 do
   sleep 1
 done
+
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.cons 1" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering exonerate cons statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
 
 my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 .orf" 1
 
