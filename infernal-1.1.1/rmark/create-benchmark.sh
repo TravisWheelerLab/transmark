@@ -74,9 +74,9 @@ esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst > 7362_alignme
 COMMENT
 
 
-echo "making the benchmark directory"
+echo "making the benchmark directory $transmark_benchmark_dir"
 mkdir $transmark_benchmark_dir
-echo "cd'ing into the benchmark directory"
+echo "cd'ing into the benchmark directory $transmark_benchmark_dir"
 cd $transmark_benchmark_dir
 
 
@@ -92,32 +92,59 @@ tblastn_path=$(pwd)/ncbi-blast/ncbi-blast-2.6.0+/bin/
 
 
 echo "generating the DNA background benchmark with decoy shuffled ORFs inserted into the background"
-${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+#${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
 
 #smaller test background sequence
 #${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
-#${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.75 -N 1 -L 100000 -R 10 -E 10 --maxtrain 30 --maxtest 20 -D ../Pfam-A.v27.seed transmarkORFandDNA ../150_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.75 -N 1 -L 1000000 -R 10 -E 10 --maxtrain 30 --maxtest 20 -D ../Pfam-A.v27.seed transmarkORFandDNA ../150_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
 
 echo "creating a DB for tblastn to use"
 ${tblastn_path}/makeblastdb -dbtype nucl -in transmarkORFandDNA.fa
 
 echo "creating the file that has the amino acid MSAs that have the sequences will be used as query sequences against the background sequences"
-${transmarkpath}/../build_protein_training_seeds.pl transmarkAminoAcidTest.msa transmarkORFandDNA.msa ../Pfam-A.v27.seed
+${transmarkpath}/../build_protein_training_seeds.pl transmarkAminoAcid.msa transmarkORFandDNA.msa ../Pfam-A.v27.seed
 
-echo "creating the HMMs to use as queries from the amino acid MSAs"
-${phmmert_path}/hmmbuild transmarkAminoAcidTest.hmm transmarkAminoAcidTest.msa
+echo "creating the HMMs to use as queries in phmmert from the amino acid MSAs"
+${phmmert_path}/hmmbuild transmarkAminoAcid.hmm transmarkAminoAcid.msa
+
+echo "creating the HMMs to use as queries in nhmmer from the nucleic acid MSAs"
+${phmmert_path}/hmmbuild transmarkORFandDNA.hmm transmarkORFandDNA.msa
 
 
-echo "making the phmmert result directory"
-mkdir ptr.std.e100
+echo "making the nhmmer result directory"
+mkdir nhr.std.e100
 #do the searches 
 #NOTE the result directories, e.g. tbn.w3.e100.fpw must be created before the command below is called
 #otherwise the script will try to write to the directory possibly before it is created and you will loose
 #result data
+echo "running the nhmmer search against the benchmark"
+perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkORFandDNA.hmm  $phmmert_path ${transmarkpath}/rmark  nhr.std.e100 nhr.std.e100 ${transmarkpath}/rmark_opts/nhmmer.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-nhmmer  1000000
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Waiting for nhmmer to finish; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+
+echo "making the blastn result directory"
+mkdir bln.w3.e100
+echo "running the blastn search against the benchmark"
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} bln.w3.e100 ${transmarkpath}/rmark_opts/blastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-blastn 1000000
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Waiting for blastn to finish; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+
+echo "making the phmmert result directory"
+mkdir ptr.std.e100
 echo "running the phmmert search against the benchmark"
-perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcidTest.hmm  $phmmert_path ${transmarkpath}/rmark  ptr.std.e100 ptr.std.e100 ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert  1000000
-
-
+perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcid.hmm  $phmmert_path ${transmarkpath}/rmark  ptr.std.e100 ptr.std.e100 ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert  1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for phmmert to finish; press [CTRL+C] to stop.."
@@ -126,11 +153,9 @@ do
   sleep 1
 done
 
-#echo before comment
-
 
 mkdir tbn.w3.e100.cons
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.cons ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-cons 1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcid  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.cons ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-cons 1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for tblastn cons to finish; press [CTRL+C] to stop.."
@@ -140,7 +165,7 @@ do
 done
 
 mkdir tbn.w3.e100.fpw
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.fpw ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-fpw 1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcid  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.fpw ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-fpw 1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for tblastn fpw to finish; press [CTRL+C] to stop.."
@@ -151,7 +176,7 @@ done
 
 
 mkdir ptr.std.e100.cons
-perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -G transmarkAminoAcidTest  $phmmert_path ${transmarkpath}/rmark  ptr.std.e100.cons ptr.std.e100.cons ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert-cons  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -G transmarkAminoAcid  $phmmert_path ${transmarkpath}/rmark  ptr.std.e100.cons ptr.std.e100.cons ${transmarkpath}/rmark_opts/phmmert.e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-phmmert-cons  1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for phmmert cons to finish; press [CTRL+C] to stop.."
@@ -159,6 +184,92 @@ while [[ $(qstat -u wshands) ]]
 do
   sleep 1
 done
+
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w3.e100 1" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering blastn statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering tblastn cons statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering tblastn fpw statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering phmmert statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  nhr.std.e100 1" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering nhmmer statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100.cons 1" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering phmmert cons statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 .orf" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering tblastn fpw ORF statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1 .orf" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering tblastn cons ORF  statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1 .orf" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering phmmert ORF statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+
 
 #echo before comment
 #: <<'COMMENT2'
@@ -176,7 +287,7 @@ exonerate_path=$(pwd)/exonerate/exonerate-2.2.0-x86_64/bin/
 
 
 mkdir exonerate.fpw
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${exonerate_path} exonerate.fpw ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcid  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${exonerate_path} exonerate.fpw ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-fpw  1000000
 
 
 #wait until the running jobs have finished (there is no output from qstat)
@@ -187,7 +298,7 @@ do
 done
 
 mkdir exonerate.cons
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcidTest  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${exonerate_path} exonerate.cons ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-cons  1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcid  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${exonerate_path} exonerate.cons ${transmarkpath}/rmark_opts/exonerate.opts transmarkORFandDNA ${transmarkpath}/rmark/x-exonerate-cons  1000000
 
 
 #wait until the running jobs have finished (there is no output from qstat)
@@ -217,42 +328,6 @@ ${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1 .orf
 COMMENT
 
 #gather statistics for how many positive embedded squences were found by the search tools
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1" 1
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering tblastn cons statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
-do
-  sleep 1
-done
-
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1" 1
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering tblastn fpw statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
-do
-  sleep 1
-done
-
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1" 1
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering phmmert statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
-do
-  sleep 1
-done
-
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100.cons 1" 1
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering phmmert cons statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
-do
-  sleep 1
-done
-
 
 my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1" 1
 
@@ -267,34 +342,6 @@ my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering exonerate cons statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
-do
-  sleep 1
-done
-
-
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 .orf" 1
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering tblastn fpw ORF statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
-do
-  sleep 1
-done
-
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1 .orf" 1
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering tblastn cons ORF  statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
-do
-  sleep 1
-done
-
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1 .orf" 1
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering phmmert ORF statistics; press [CTRL+C] to stop.."
 while [[ $(qstat -u wshands) ]]
 do
   sleep 1
