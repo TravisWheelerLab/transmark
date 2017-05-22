@@ -129,12 +129,24 @@ done
 
 
 echo "making the blastn result directory"
-mkdir bln.w3.e100
+mkdir bln.w3.e100.fpw
 echo "running the blastn search against the benchmark"
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} bln.w3.e100 ${transmarkpath}/rmark_opts/blastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-blastn 1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} bln.w3.e100.fpw ${transmarkpath}/rmark_opts/blastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-blastn-fpw 1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for blastn to finish; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+echo "making the blastn result directory"
+mkdir bln.w3.e100.cons
+echo "running the blastn search against the benchmark"
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} bln.w3.e100.cons ${transmarkpath}/rmark_opts/blastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-blastn-cons 1000000
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Waiting for blastn cons to finish; press [CTRL+C] to stop.."
 while [[ $(qstat -u wshands) ]]
 do
   sleep 1
@@ -185,10 +197,19 @@ do
   sleep 1
 done
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w3.e100 1" 1
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w3.e100.fpw 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering blastn statistics; press [CTRL+C] to stop.."
+echo "Gathering blastn fpw statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands) ]]
+do
+  sleep 1
+done
+
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w3.e100.cons 1" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering blastn cons statistics; press [CTRL+C] to stop.."
 while [[ $(qstat -u wshands) ]]
 do
   sleep 1
