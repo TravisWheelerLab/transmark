@@ -6,7 +6,7 @@ exonerate-cons-     exonerate.cons      gold               1
 exonerate-fpw-      exonerate.fpw       gold4              1
 blastn-w4-cons-     bln.w4.e100.cons    blue               1
 blastn-w4-fpw-      bln.w4.e100.fpw     lightblue          1
-nhmmer-             nhmmer.std.e100     magenta            1
+nhmmer-             nhr.std.e100        magenta            1
 
 
 
