@@ -197,95 +197,95 @@ do
   sleep 1
 done
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w4.e100.fpw 1" 1
+my_msub gather-bln.w4.e100.fpw "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w4.e100.fpw 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering blastn fpw statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'gather-bln.w4.e100.fpw' ) ]]
 do
   sleep 1
 done
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w4.e100.cons 1" 1
+my_msub gather-bln.w4.e100.cons "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w4.e100.cons 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering blastn cons statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'gather-bln.w4.e100.cons' ) ]]
 do
   sleep 1
 done
 
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1" 1
+my_msub gather-tbn.w3.e100.cons "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering tblastn cons statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'gather-tbn.w3.e100.cons' ) ]]
 do
   sleep 1
 done
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1" 1
+my_msub gather-tbn.w3.e100.fpw "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering tblastn fpw statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'gather-tbn.w3.e100.fpw' ) ]]
 do
   sleep 1
 done
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1" 1
+my_msub gather-ptr.std.e100 "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering phmmert statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'gather-ptr.std.e100' ) ]]
 do
   sleep 1
 done
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  nhr.std.e100 1" 1
+my_msub gather-nhr.std.e100 "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  nhr.std.e100 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering nhmmer statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'gather-nhr.std.e100' ) ]]
 do
   sleep 1
 done
 
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100.cons 1" 1
+my_msub gather-ptr.std.e100.cons "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100.cons 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering phmmert cons statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands) | grep 'gather-ptr.std.e100.cons' ]]
 do
   sleep 1
 done
 
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 .orf" 1
+my_msub gather-tbn-w3-e100-fpw-orf "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 .orf" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering tblastn fpw ORF statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands) | grep 'gather-tbn-w3-e100-fpw-orf' ]]
 do
   sleep 1
 done
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1 .orf" 1
+my_msub gather-tbn-w3-e100-cons-orf "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1 .orf" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering tblastn cons ORF  statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'gather-tbn-w3-e100-cons-orf' ) ]]
 do
   sleep 1
 done
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1 .orf" 1
+my_msub gather-ptr-std-e100-orf "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1 .orf" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering phmmert ORF statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'gather-ptr-std-e100-orf' ) ]]
 do
   sleep 1
 done
@@ -331,39 +331,22 @@ done
 
 #COMMENT2
 
-echo before comment
-: <<'COMMENT'
-
-
-${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1
-${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1
-${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1
-${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100.cons 1
-${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1
-${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.cons 1
-
-${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1 .orf
-${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 .orf
-${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1 .orf
-
-COMMENT
-
 #gather statistics for how many positive embedded squences were found by the search tools
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1" 1 --timeout=18000
+my_msu gather-exonerate.fpw "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1" 1 --timeout=18000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering exonerate fpw statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'gather-exonerate.fpw' ) ]]
 do
   sleep 1
 done
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.cons 1" 1 --timeout=18000
+my_msub gather-exonerate.cons "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.cons 1" 1 --timeout=18000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering exonerate cons statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'gather-exonerate.cons' ) ]]
 do
   sleep 1
 done
