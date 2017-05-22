@@ -333,7 +333,7 @@ done
 
 #gather statistics for how many positive embedded squences were found by the search tools
 
-my_msu gather-exonerate.fpw "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1" 1 --timeout=18000
+my_msub gather-exonerate.fpw "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1" 1 --timeout=18000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering exonerate fpw statistics; press [CTRL+C] to stop.."
