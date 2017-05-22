@@ -257,7 +257,7 @@ my_msub gather-ptr.std.e100.cons "${transmarkpath}/rmark/rmark-pp.sh transmarkOR
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering phmmert cons statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) | grep 'gather-ptr.std.e100.cons' ]]
+while [[ $(qstat -u wshands | grep 'gather-ptr.std.e100.cons') ]]
 do
   sleep 1
 done
@@ -267,7 +267,7 @@ my_msub gather-tbn-w3-e100-fpw-orf "${transmarkpath}/rmark/rmark-pp.sh transmark
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering tblastn fpw ORF statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) | grep 'gather-tbn-w3-e100-fpw-orf' ]]
+while [[ $(qstat -u wshands | grep 'gather-tbn-w3-e100-fpw-orf') ]]
 do
   sleep 1
 done
