@@ -122,7 +122,7 @@ perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkORFandDNA.hmm  
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for nhmmer to finish; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'nhr.std.e100') ]]
 do
   sleep 1
 done
@@ -135,7 +135,7 @@ perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phm
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for blastn to finish; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'bln.w4.e100.fpw') ]]
 do
   sleep 1
 done
@@ -147,7 +147,7 @@ perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phm
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for blastn cons to finish; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'bln.w4.e100.cons') ]]
 do
   sleep 1
 done
@@ -160,7 +160,7 @@ perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcid.hmm  
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for phmmert to finish; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'ptr.std.e100' ) ]]
 do
   sleep 1
 done
@@ -171,7 +171,7 @@ perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcid  -F -N 16 $phm
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for tblastn cons to finish; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'tbn.w3.e100.cons' ) ]]
 do
   sleep 1
 done
@@ -181,7 +181,7 @@ perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcid  -F -N 16 $phm
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for tblastn fpw to finish; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'tbn.w3.e100.fpw' ) ]]
 do
   sleep 1
 done
@@ -192,7 +192,7 @@ perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -G transmarkAminoAcid  $phm
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for phmmert cons to finish; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'ptr.std.e100.cons' ) ]]
 do
   sleep 1
 done
@@ -313,7 +313,7 @@ perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcid  -F -N 16 $phm
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for exonerate fpw to finish; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'exonerate.fpw') ]]
 do
   sleep 1
 done
@@ -324,7 +324,7 @@ perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcid  -F -N 16 $phm
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for exonerate cons to finish; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands) ]]
+while [[ $(qstat -u wshands | grep 'exonerate.cons' ) ]]
 do
   sleep 1
 done
