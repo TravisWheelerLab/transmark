@@ -129,9 +129,9 @@ done
 
 
 echo "making the blastn result directory"
-mkdir bln.w3.e100.fpw
+mkdir bln.w4.e100.fpw
 echo "running the blastn search against the benchmark"
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} bln.w3.e100.fpw ${transmarkpath}/rmark_opts/blastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-blastn-fpw 1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} bln.w4.e100.fpw ${transmarkpath}/rmark_opts/blastn-w4-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-blastn-fpw 1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for blastn to finish; press [CTRL+C] to stop.."
@@ -141,9 +141,9 @@ do
 done
 
 echo "making the blastn result directory"
-mkdir bln.w3.e100.cons
+mkdir bln.w4.e100.cons
 echo "running the blastn search against the benchmark"
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} bln.w3.e100.cons ${transmarkpath}/rmark_opts/blastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-blastn-cons 1000000
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} bln.w4.e100.cons ${transmarkpath}/rmark_opts/blastn-w4-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-blastn-cons 1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for blastn cons to finish; press [CTRL+C] to stop.."
@@ -197,7 +197,7 @@ do
   sleep 1
 done
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w3.e100.fpw 1" 1
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w4.e100.fpw 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering blastn fpw statistics; press [CTRL+C] to stop.."
@@ -206,7 +206,7 @@ do
   sleep 1
 done
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w3.e100.cons 1" 1
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w4.e100.cons 1" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering blastn cons statistics; press [CTRL+C] to stop.."
@@ -350,7 +350,7 @@ COMMENT
 
 #gather statistics for how many positive embedded squences were found by the search tools
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1" 1
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.fpw 1" 1 --timeout=18000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering exonerate fpw statistics; press [CTRL+C] to stop.."
@@ -359,7 +359,7 @@ do
   sleep 1
 done
 
-my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.cons 1" 1
+my_msub gather "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA exonerate.cons 1" 1 --timeout=18000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Gathering exonerate cons statistics; press [CTRL+C] to stop.."
