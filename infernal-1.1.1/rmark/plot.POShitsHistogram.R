@@ -67,7 +67,7 @@ if (identical(tblastnfoundit,"no")) {
      border="blue",
      col="green",
      xlim=c(-3.0e+1,3.0e+1),
-     ylim=c(0,2500),
+     ylim=c(0,1500),
      breaks=300,
      las=1)
 

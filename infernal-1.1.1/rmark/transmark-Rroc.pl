@@ -32,8 +32,8 @@ $xlabel = "Number of false positives per search";
 $ylabel = "Sensitivity (fraction of 2774 true positives)";
 
 #push(@R, "xlimit<-c(0.001,20)\n");
-push(@R, "pdf(\"$pdf\", height=3.5, width=4.75)\n");
-push(@R, "par(mgp = c(1.4, 0.5, 0), mar = c(2.6, 2.6, 0.3, 0.3))\n");
+push(@R, "pdf(\"$pdf\", height=3.75, width=4.75)\n");
+push(@R, "par(mgp = c(1.4, 0.5, 0), mar = c(2.6, 2.6, 2.6, 0.3))\n");
 push(@R, "options(scipen=2)\n");
 push(@R, "ylimit<-c(0,0.9)\n");
 push(@R, "xlimit<-c(0.007,10)\n");
@@ -144,7 +144,7 @@ while(<LIST>) {
 }
 close(LIST);
 
-#push(@R, "legend(0.007, 1.03, c" . return_vec_line(\@nametimemerA) . ", lty=1, cex=0.8, col=c" . return_vec_line(\@colorA) . ", text.col=c" . return_vec_line(\@colorA) . ")\n"); #TW was commented
+push(@R, "legend(0.007, 0.7, c" . return_vec_line(\@nametimemerA) . ", lty=1, cex=0.8, col=c" . return_vec_line(\@colorA) . ", text.col=c" . return_vec_line(\@colorA) . ")\n"); #TW was commented
 push(@R, "dev.off()\n");
 
 $Rinput = join("", @R);
