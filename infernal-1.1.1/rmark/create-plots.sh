@@ -1,3 +1,10 @@
+#stop the script if it attempts to use any unset variables 
+set -o nounset
+#stop the script if any command fails (returns non zero)
+set -o errexit
+
+
+
 #create the table of E-Values for the hits for Positive inserted sequences by the tools
 #sort by phmmert E-Values (hmm)
 plot_src_path=/home/um/wshands/gitroot/transmark/infernal-1.1.1/rmark

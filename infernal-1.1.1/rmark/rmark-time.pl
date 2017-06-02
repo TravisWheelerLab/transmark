@@ -27,7 +27,8 @@ while($file = <>) {
 	    $fam_seconds   += ($hours * 3600) + ($minutes * 60) + $seconds;
 	    $total_seconds += ($hours * 3600) + ($minutes * 60) + $seconds;
 	}
-	elsif($line =~ /^$fam\s+(\d+)\s+seconds/) { 
+#	elsif($line =~ /^$fam\s+(\d+)\s+seconds/) { 
+	elsif($line =~ /^$fam\s+(\d+)\.?\d*\s+seconds/) { 
 	    $fam_seconds   += $1;
 	    $total_seconds += $1;
 	}
