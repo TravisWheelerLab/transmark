@@ -4,11 +4,13 @@ if ($ARGV[1] eq "orf") {
   $hmmfile  = "ptr.std.e100.mer.orf";
   $consfile = "tbn.w3.e100.cons.mer.orf";
   $fpwfile = "tbn.w3.e100.fpw.mer.orf";
+  $skip_match = '-'
 } else {
   $phmmertconsfile  = "ptr.std.e100.cons.mer";
   $hmmfile  = "ptr.std.e100.mer";
   $consfile = "tbn.w3.e100.cons.mer";
   $fpwfile = "tbn.w3.e100.fpw.mer";
+  $skip_match = '-'
 }
 
 #set this to the minimum E-Value to be included in the table
@@ -24,7 +26,9 @@ while ($l = <F>) {
    @vals = split /\s+/, $l;
    ($fam, $famseq, $eval, $plusminus) = @vals[2,3,4,5];
    next if ($fam eq "family");
-   next if ($plusminus eq "-");
+   #trim whitespace
+   $plusminus =~ s/^\s+|\s+$//g;
+   next if ($plusminus eq $skip_match);
    # skip evalues > 100 until phmmert -domE filter fixed
    next  if ($eval > 100);
    # skip evalues < a threshold 
@@ -43,7 +47,12 @@ while ($l = <F>) {
    @vals = split /\s+/, $l;
    ($fam, $famseq, $eval, $plusminus) = @vals[2,3,4,5];
    next if ($fam eq "family");
-   next if ($plusminus eq "-");
+   #trim whitespace
+   $plusminus =~ s/^\s+|\s+$//g;
+
+#   printf("skip char:'%s'", $plusminus);
+
+   next if ($plusminus eq $skip_match);
    # skip evalues > 100 until phmmert -domE filter fixed
    next  if ($eval > 100);
    # skip evalues < a threshold 
@@ -60,7 +69,9 @@ while ($l = <F>) {
    @vals = split /\s+/, $l;
    ($fam, $famseq, $eval, $plusminus) = @vals[2,3,4,5];
    next if ($fam eq "family");
-   next if ($plusminus eq "-");
+   #trim whitespace
+   $plusminus =~ s/^\s+|\s+$//g;
+   next if ($plusminus eq $skip_match);
    # skip evalues < a threshold 
 #   printf("cons file %10s %10s\n",$fam,$eval);
    next if ($fam eq "family");
@@ -76,7 +87,9 @@ while ($l = <F>) {
    @vals = split /\s+/, $l;
    ($fam, $famseq, $eval, $plusminus) = @vals[2,3,4,5];
    next if ($fam eq "family");
-   next if ($plusminus eq "-");
+   #trim whitespace
+   $plusminus =~ s/^\s+|\s+$//g;
+   next if ($plusminus eq $skip_match);
    # skip evalues < a threshold 
 #   printf("fpw file %10s %10s\n",$fam,$eval);
    next if ($fam eq "family");
@@ -85,15 +98,6 @@ while ($l = <F>) {
    $fpw_hits{$fam.$famseq} = 0.0+$eval;   
 }
 
-
-#if ($ARGV[0] eq "fpw") {
-#   @fpwgis = sort {$fpw_hits{$a} <=> $fpw_hits{$b}} keys %fpw_hits
-#} elsif ($ARGV[0] eq "cons") {
-#   @consgis = sort {$cons_hits{$a} <=> $cons_hits{$b}} keys %cons_hits
-#} elsif ($ARGV[0] eq "hmm") {
-#   printf("organizing by hmmi\n");
-#   @hmmgis = sort {$hmm_hits{$a} <=> $hmm_hits{$b}} keys %hmm_hits
-#}
 
 #merge the hits found by each tool so that there is one
 #list with all the hits even though one tool may have found
@@ -150,7 +154,7 @@ if ($ARGV[0] eq "fpw") {
 } elsif ($ARGV[0] eq "cons") {
    @sorted_keys = sort {$cons_hits{$a} <=> $cons_hits{$b}} keys %cons_hits
 } elsif ($ARGV[0] eq "hmm") {
-#   printf("organizing by hmmi\n");
+#   printf("organizing by hmm\n");
    @sorted_keys = sort {$hmm_hits{$a} <=> $hmm_hits{$b}} keys %hmm_hits
 }
 

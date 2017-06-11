@@ -127,30 +127,15 @@ do
   sleep 1
 done
 
-
-echo "making the blastn result directory"
-mkdir bln.w4.e100.fpw
-echo "running the blastn search against the benchmark"
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} bln.w4.e100.fpw ${transmarkpath}/rmark_opts/blastn-w4-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-blastn-fpw 1000000
+my_msub gather-nhr.std.e100 "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  nhr.std.e100 1 evalue" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
-echo "Waiting for blastn to finish; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands | grep 'bln.w4.e100.fpw') ]]
+echo "Gathering nhmmer statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands | grep 'gather-nhr.std.e100' ) ]]
 do
   sleep 1
 done
 
-echo "making the blastn result directory"
-mkdir bln.w4.e100.cons
-echo "running the blastn search against the benchmark"
-perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} bln.w4.e100.cons ${transmarkpath}/rmark_opts/blastn-w4-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-blastn-cons 1000000
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Waiting for blastn cons to finish; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands | grep 'bln.w4.e100.cons') ]]
-do
-  sleep 1
-done
 
 
 echo "making the phmmert result directory"
@@ -161,6 +146,15 @@ perl ${transmarkpath}/rmark/rmark-master.pl -F -N 16 -C transmarkAminoAcid.hmm  
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for phmmert to finish; press [CTRL+C] to stop.."
 while [[ $(qstat -u wshands | grep 'ptr.std.e100' ) ]]
+do
+  sleep 1
+done
+
+my_msub gather-ptr.std.e100 "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1 evalue" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering phmmert statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands | grep 'gather-ptr.std.e100' ) ]]
 do
   sleep 1
 done
@@ -176,12 +170,32 @@ do
   sleep 1
 done
 
+my_msub gather-tbn.w3.e100.cons "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1 evalue" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering tblastn cons statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands | grep 'gather-tbn.w3.e100.cons' ) ]]
+do
+  sleep 1
+done
+
+
+
 mkdir tbn.w3.e100.fpw
 perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkAminoAcid  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} tbn.w3.e100.fpw ${transmarkpath}/rmark_opts/tblastn-w3-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-tblastn-fpw 1000000
 
 #wait until the running jobs have finished (there is no output from qstat)
 echo "Waiting for tblastn fpw to finish; press [CTRL+C] to stop.."
 while [[ $(qstat -u wshands | grep 'tbn.w3.e100.fpw' ) ]]
+do
+  sleep 1
+done
+
+my_msub gather-tbn.w3.e100.fpw "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 evalue" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering tblastn fpw statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands | grep 'gather-tbn.w3.e100.fpw' ) ]]
 do
   sleep 1
 done
@@ -197,62 +211,6 @@ do
   sleep 1
 done
 
-my_msub gather-bln.w4.e100.fpw "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w4.e100.fpw 1 evalue" 1 --timeout=18000
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering blastn fpw statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands | grep 'gather-bln.w4.e100.fpw' ) ]]
-do
-  sleep 1
-done
-
-my_msub gather-bln.w4.e100.cons "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w4.e100.cons 1 evalue" 1
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering blastn cons statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands | grep 'gather-bln.w4.e100.cons' ) ]]
-do
-  sleep 1
-done
-
-
-my_msub gather-tbn.w3.e100.cons "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.cons 1 evalue" 1
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering tblastn cons statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands | grep 'gather-tbn.w3.e100.cons' ) ]]
-do
-  sleep 1
-done
-
-my_msub gather-tbn.w3.e100.fpw "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 evalue" 1
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering tblastn fpw statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands | grep 'gather-tbn.w3.e100.fpw' ) ]]
-do
-  sleep 1
-done
-
-my_msub gather-ptr.std.e100 "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100 1 evalue" 1
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering phmmert statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands | grep 'gather-ptr.std.e100' ) ]]
-do
-  sleep 1
-done
-
-my_msub gather-nhr.std.e100 "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  nhr.std.e100 1 evalue" 1
-
-#wait until the running jobs have finished (there is no output from qstat)
-echo "Gathering nhmmer statistics; press [CTRL+C] to stop.."
-while [[ $(qstat -u wshands | grep 'gather-nhr.std.e100' ) ]]
-do
-  sleep 1
-done
-
-
 my_msub gather-ptr.std.e100.cons "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA  ptr.std.e100.cons 1 evalue" 1
 
 #wait until the running jobs have finished (there is no output from qstat)
@@ -261,6 +219,8 @@ while [[ $(qstat -u wshands | grep 'gather-ptr.std.e100.cons') ]]
 do
   sleep 1
 done
+
+
 
 
 my_msub gather-tbn-w3-e100-fpw-orf "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA tbn.w3.e100.fpw 1 evalue .orf" 1
@@ -351,4 +311,54 @@ do
   sleep 1
 done
 
+#do blastn searches with different word sizes
+for word_size in 11 7 4
+do
+
+
+echo "making the blastn result directory"
+mkdir bln.w${word_size}.e100.fpw
+echo "running the blastn search against the benchmark"
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} bln.w${word_size}.e100.fpw ${transmarkpath}/rmark_opts/blastn-w${word_size}-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-blastn-fpw 1000000
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Waiting for blastn to finish; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands | grep "bln.w${word_size}.e100.fpw") ]]
+do
+  sleep 1
+done
+
+my_msub gather-bln.w${word_size}.e100.fpw "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w${word_size}.e100.fpw 1 evalue" 1 --timeout=18000
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering blastn fpw statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands | grep "gather-bln.w${word_size}.e100.fpw" ) ]]
+do
+  sleep 1
+done
+
+
+
+echo "making the blastn result directory"
+mkdir bln.w${word_size}.e100.cons
+echo "running the blastn search against the benchmark"
+perl ${transmarkpath}/rmark/rmark-master.pl -G transmarkORFandDNA  -F -N 16 $phmmert_path ${transmarkpath}/rmark ${tblastn_path} bln.w${word_size}.e100.cons ${transmarkpath}/rmark_opts/blastn-w${word_size}-e100.opts transmarkORFandDNA ${transmarkpath}/rmark/x-blastn-cons 1000000
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Waiting for blastn cons to finish; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands | grep "bln.w${word_size}.e100.cons") ]]
+do
+  sleep 1
+done
+
+my_msub gather-bln.w${word_size}.e100.cons "${transmarkpath}/rmark/rmark-pp.sh transmarkORFandDNA bln.w${word_size}.e100.cons 1 evalue" 1
+
+#wait until the running jobs have finished (there is no output from qstat)
+echo "Gathering blastn cons statistics; press [CTRL+C] to stop.."
+while [[ $(qstat -u wshands | grep "gather-bln.w${word_size}.e100.cons" ) ]]
+do
+  sleep 1
+done
+
+done
 

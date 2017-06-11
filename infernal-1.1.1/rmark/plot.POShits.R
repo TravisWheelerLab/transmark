@@ -36,9 +36,36 @@ attach(myhmmdata)
 
 if (identical(tooltechnique,"fpw")) {
 
+# Define the position of tick marks
+v1 <- c(0,1.0e-25,1.0e-50,1.0e-75,1.0e-100,1.0e-125,1.0e-150,1.0e-175)
+
+# Define the labels of tick marks
+v2 <- c("0","1.0e-25","1.0e-50","1.0e-75","1.0e-100","1.0e-125","1.0e-150","1.0e-175")
+
+# Plot the data
+#plot(x,
+#     y,
+#     xaxt = "n")
+
+# Add axis to the plot 
+#axis(side = 1, 
+#     at = v1, 
+#     labels = v2,
+#     tck=-.1,
+#     tcl = -0.5,
+#    cex.axis=1.05,
+#     col.axis="blue",
+#     font.axis=5)
+
+
 plot(tblastnfpw, phmmert, main=title, 
       cex=0.8, xlab="tblastn fpw - E-value", ylab="phmmert - E-value", col="blue",
       pch=1, log="xy", xlim=c(1e+2,1e-170), ylim=c(1e+2,1e-170))
+
+
+#plot(tblastnfpw, phmmert, main=title, 
+#      cex=0.8, xlab="tblastn fpw - E-value", ylab="phmmert - E-value", col="blue",
+#      pch=1, log="xy", xlim=c(1e+2,1e-175), ylim=c(1e+2,1e-175),  yaxp=c(1e+2, 1e-175, 5))
 
 } else if (identical(tooltechnique,"cons")) {
 

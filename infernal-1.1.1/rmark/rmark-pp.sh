@@ -4,6 +4,8 @@ set -o nounset
 #stop the script if any command fails (returns non zero)
 set -o errexit
 
+#debug the script
+set -x
 
 
 if [ $# -lt 4 ]; then
@@ -32,9 +34,14 @@ scriptdir=`dirname $0`
 # get running time
 ls $2/*.time   | perl $scriptdir/rmark-time.pl > $2/$2.time
 # get MER
-cat $2/*out${orf_suffix} | perl $scriptdir/rmark-multiply-evalues.pl $3 | sort ${sort_option} | perl  $scriptdir/rmark-mer.pl $1.pos${orf_suffix} $2/$2.time >  $2/$2.mer${orf_suffix} #$2/$2.em$3.mer
-# get ROC
-cat $2/*out${orf_suffix} | perl $scriptdir/rmark-multiply-evalues.pl $3 | sort ${sort_option} | $scriptdir/rmark-rocplot -N 10000 --seed 181 $1 - > $2/$2.xy${orf_suffix} #$2/$2.em$3.xy
+cat $2/*out${orf_suffix} | perl $scriptdir/rmark-multiply-evalues.pl $3 | sort ${sort_option} | perl $scriptdir/rmark-mer.pl $1.pos${orf_suffix} $2/$2.time >  $2/$2.mer${orf_suffix} #$2/$2.em$3.mer
+
+#if not processing shuffled ORFs then create xy file
+if [ -z $orf_suffix  ]; then
+    # get ROC
+    cat $2/*out | perl $scriptdir/rmark-multiply-evalues.pl $3 | sort ${sort_option} | $scriptdir/rmark-rocplot -N 10000 --seed 181 $1 - > $2/$2.xy  #$2/$2.em$3.xy
+fi
+
 # get mer from rmark-rocplot
 #cat $2/*out${orf_suffix} | perl $scriptdir/rmark-multiply-evalues.pl $3 | sort ${sort_option} | $scriptdir/rmark-rocplot -N 10000 --mer --seed 181 $1 - > $2/$2.bmer${orf_suffix} # $2/$2.em$3.bmer
 # get numbers of false negatives and false positives at E-threshold of 0.1 from rmark-rocplot (after E-value inflation)
@@ -45,8 +52,10 @@ cat $2/*out${orf_suffix} | perl $scriptdir/rmark-multiply-evalues.pl $3 | sort $
 cp $2/$2.mer${orf_suffix} ./
 #cp $2/$2.bmer${orf_suffix} ./
 cp $2/$2.time ./
-cp $2/$2.xy${orf_suffix} ./
 
+if [ -z $orf_suffix  ]; then
+    cp $2/$2.xy ./
+fi
 
 # summarize files to stdout
 echo -n $2 | awk '{printf("%-70s  ", $0)}' > $2/$2.sum${orf_suffix} #$2/$2.em$3.sum
