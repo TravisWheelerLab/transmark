@@ -1,0 +1,14 @@
+phmmert-standard-   ptr.std.e100        #d93f20            1
+phmmert-cons-       ptr.std.e100.cons   orange             1
+tblastn-w3-fpw-     tbn.w3.e100.fpw     black              1
+tblastn-w3-cons-    tbn.w3.e100.cons    darkgrey           1
+nhmmer-             nhr.std.e100        magenta            1
+exonerate-cons-     exonerate.cons      gold               1
+exonerate-fpw-      exonerate.fpw       gold4              1
+blastn-w7-cons-     bln.w7.e100.cons    cyan               1
+blastn-w7-fpw-      bln.w7.e100.fpw     darkcyan           1
+blastn-w11-cons-    bln.w11.e100.cons   blue               1
+blastn-w11-fpw-     bln.w11.e100.fpw    lightblue          1
+
+
+
