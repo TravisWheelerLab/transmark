@@ -32,7 +32,7 @@ $tmpoutfile = $outfile . ".tmp";
 $sorttmpoutfile = $outfile . ".tmp.sort";
 
 $idscript   = "$scriptdir/rmark-idpositives.pl";
-$blastn   = "$execdir/blastn";
+$blastn   = "$modeldir/blastn";
 $afetch     = "$execdir/esl-afetch";
 $sfetch     = "$execdir/esl-sfetch";
 $reformat   = "$execdir/esl-reformat";
@@ -49,7 +49,7 @@ if(! -e $reformat) {
     if(! -e $reformat) { die "$reformat does not exist"; }
 }    
 if(! -e $blastn) { 
-    $blastn = "/groups/eddy/home/nawrockie/bin/blastn";
+#    $blastn = "/groups/eddy/home/nawrockie/bin/blastn";
     if(! -e $blastn) { die "$blastn does not exist"; }
 }    
 

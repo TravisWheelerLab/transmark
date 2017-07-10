@@ -1,5 +1,8 @@
 #! /usr/bin/perl -w
 
+#use strict;
+use warnings;
+
 # Given a positive file (.pos), an output file from rmark-time.pl and
 # an output (.out) file of an rmark benchmark, determine the
 # family-specific and summary MER (minimum error rates). The output
@@ -79,6 +82,7 @@ while ($line = <POS>)
     @fields   = split(' ', $line, 5);
     $match = $fields[0];
     $fam   = $match;
+    #remove sequence number
     $fam   =~ s/\/\d+$//;
     if($fam =~ m/\//) { die "ERROR family $fam from $tmp, contains two '/', it should only have 1!"; }
     if(length($fam) > $fam_strlen) { $fam_strlen = length($fam); }
@@ -134,11 +138,13 @@ while ($line = <>)
     if((($shuffledorf != 1) && (! $seen_matchHH{$fam}{$match})) || ($shuffledorf == 1))  { 
         # if seen_matchHH{$fam}{$match}, we've already seen a (better scoring) match to this positive, skip it
 	# note that seen_matchHH{$fam}{$match} is only set below for POSITIVES, so decoys will never be skipped
-	if ($match =~ m/^decoy/) { 
+	if ($match =~ m/^decoy/) {
 	    # negative
 	    $nlisted++;
-	    $fam_fpH{$fam}++;
-	    $fp++;
+            if ($shuffledorf != 1) {
+	        $fam_fpH{$fam}++;
+	        $fp++;
+            }
 	    printf("= %5d  %-*s  %-20s  %8g  %3s\n", 
 		   $nlisted, $fam_strlen, $fam, $match, $sc, " - ");
 	}
@@ -147,8 +153,10 @@ while ($line = <>)
               (($shuffledorf == 1) && ($strand eq "same"))) {
 	    # positive
 	    $nlisted++;
-	    $fam_fnH{$fam}--;
-	    $fn--;
+            if ($shuffledorf != 1) {
+	        $fam_fnH{$fam}--;
+	        $fn--;
+            }
 	    $seen_matchHH{$fam}{$match} = 1;
 	    printf("= %5d  %-*s  %-20s  %8g  %3s\n", 
 		   $nlisted, $fam_strlen, $fam, $match, $sc, " + ");
@@ -161,18 +169,25 @@ while ($line = <>)
 	    $mer_fn = $fn;
 	    $mer_sc = $sc; 
 	}
-	if(($fam_fpH{$fam} + $fam_fnH{$fam}) < $fam_merH{$fam}) { 
-	    $fam_merH{$fam} = $fam_fpH{$fam} + $fam_fnH{$fam}; 
-	    $fam_mer_fpH{$fam} = $fam_fpH{$fam};
-	    $fam_mer_fnH{$fam} = $fam_fnH{$fam};
-	    $fam_mer_scH{$fam} = $sc;
-	}
+	if ($shuffledorf != 1) {
+            if (($fam_fpH{$fam} + $fam_fnH{$fam}) < $fam_merH{$fam}) {
+	        $fam_merH{$fam} = $fam_fpH{$fam} + $fam_fnH{$fam};
+	        $fam_mer_fpH{$fam} = $fam_fpH{$fam};
+	        $fam_mer_fnH{$fam} = $fam_fnH{$fam};
+	        $fam_mer_scH{$fam} = $sc;
+	    }
+        }
     } # end of if(! $seen_matchH{$match})
     else { 
 	; #printf("ignoring double hit line: $line\n"); 
     }
     $prv_sc = $sc;
     $seen_sc = 1;
+}
+
+#don't process table if creating shuffled ORF MER file
+if ($shuffledorf == 1) {
+     exit;
 }
 
 # print table 

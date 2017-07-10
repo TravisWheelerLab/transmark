@@ -1,17 +1,17 @@
 #! /usr/bin/perl 
 
-# Do a piece of a rmark benchmark, for blastn (NCBI blast), 
+# Do a piece of a rmark benchmark, for phmmert, 
 # first building a consensus sequence for the family, then 
-# searching with just that
+# searching with an HMM made from just that
 #
 # This script is normally called by rmark-master.pl; its command line
 # syntax is tied to rmark-master.pl.
-# x-blastn doesn't use <modeldir>, but it's passed in so that
+# x-phmmert doesn't use <modeldir>, but it's passed in so that
 # rmark-master.pl can use a consistent command line structure for
 # all search programs (cmsearch uses it, for example).
 #
-# Usage:      x-blastn <execdir>               <scriptdir> <modeldir> <resultdir> <optsfile>       <tblfile> <msafile>  <posfile>  <fafile> <outfile>
-# Example:  ./x-blastn /usr/local/blast/bin/   ../rmark/   models    testdir     blastn-w7.opts test.tbl  rmark3.msa rmark3.pos test.fa  test.out
+# Usage:      x-tblastn <execdir>               <scriptdir> <modeldir> <resultdir> <optsfile>       <tblfile> <msafile>  <posfile>  <fafile> <outfile>
+# Example:  ./x-tblastn /usr/local/blast/bin/   ../rmark/   models    testdir     tblastn-w7.opts test.tbl  rmark3.msa rmark3.pos test.fa  test.out
 #
 # Command-line options:
 # -P     : run a positive-only benchmark, only each family's positive sequences will be searched
@@ -35,7 +35,7 @@ $tmpoutfile = $outfile . ".tmp";
 $sorttmpoutfile = $outfile . ".tmp.sort";
 
 $idscript   = "$scriptdir/rmark-idpositives.pl";
-$blastn     = "$modeldir/blastn";
+$phmmert     = "$execdir/phmmert";
 $afetch     = "$execdir/esl-afetch";
 $sfetch     = "$execdir/esl-sfetch";
 $reformat   = "$execdir/esl-reformat";
@@ -53,10 +53,10 @@ if(! -e $reformat) {
     $reformat = "$execdir/../easel/miniapps/esl-reformat";
     if(! -e $reformat) { die "$reformat does not exist"; }
 }    
-if(! -e $blastn) { 
-#    $blastn = "/home/um/twheeler/src/ncbi-blast-2.2.31+/bin/blastn";
-    if(! -e $blastn) { die "$blastn does not exist"; }
-}    
+#if(! -e $tblastn) { 
+#    $tblastn = "/home/um/wshands/src/ncbi-blast-2.2.31+/bin/tblastn";
+#    if(! -e $tblastn) { die "$tblastn does not exist"; }
+#}    
 
 if (! -d $execdir)                                      { die "didn't find executable directory $execdir"; }
 if (! -d $scriptdir)                                    { die "didn't find script directory $scriptdir"; }
@@ -92,23 +92,34 @@ while (<TABLE>)
     $output = `$hmmemit -c -o $resultdir/$msaname.query.fa $resultdir/$msaname.hmm`;
     if ($? != 0) { die "FAILED: $hmmemit -o $resultdir/$msaname.query.fa $resultdir/$msaname.hmm"; }
 
-    # run blast
-    $command = "$blastn $searchopts -db $fafile -query $resultdir/$msaname.query.fa -outfmt 7 -num_threads 1 -out $resultdir/$msaname.tmp";
-    $status = system("$command");
-    if ($status != 0) { die "FAILED: $command"; }
+#    # run blast
+#    $command = "$tblastn $searchopts -db $fafile -query $resultdir/$msaname.query.fa -outfmt 7 -num_threads 1 -out $resultdir/$msaname.tmp";
+#    $status = system("$command");
+#    if ($status != 0) { die "FAILED: $command"; }
+
+    $output = `$hmmbuild  $resultdir/$msaname.query.hmm $resultdir/$msaname.query.fa`;
+    if ($? != 0) { die "FAILED: $hmmbuild  $resultdir/$msaname.query.hmm $resultdir/$msaname.query.fa"; }
+
+#    $status = system("$hmmpress $resultdir/$msaname.query.hmm");
+#    if ($status != 0) { die "FAILED: $hmmpress $resultdir/$msaname.query.hmm"; }
+    $output = `$hmmpress $resultdir/$msaname.query.hmm`;
+#    if ($? != 0) { die "FAILED: $hmmpress $resultdir/$msaname.query.hmm"; }
+
+    print "$phmmert $searchopts --tblout $resultdir/$msaname.tmp $resultdir/$msaname.query.hmm $fafile > $resultdir/$msaname.search";
+    $status = system("$phmmert $searchopts --tblout $resultdir/$msaname.tmp $resultdir/$msaname.query.hmm $fafile > $resultdir/$msaname.search");
+    if ($status != 0) { die "FAILED: $phmmert $searchopts --tblout $resultdir/$msaname.tmp $resultdir/$msaname.query.hmm $fafile > $resultdir/$msaname.phmmert"; }
 
     open(OUTPUT, "$resultdir/$msaname.tmp") || die "FAILED: to open $resultdir/$msaname.tmp tabular output file"; 
-
     while (<OUTPUT>)
     {
 	if (/^\#/) { next; }
-	@fields   = split(' ', $_, 12);
-	$target      = $fields[1];
-	$target_from = $fields[8];
-	$target_to   = $fields[9];
-	$bitscore    = $fields[11];
-	$evalue        = $fields[10];
-	printf TMPOUTFILE "%10g %10.1f %10d %10d %20s %35s\n", $evalue, $bitscore, $target_from, $target_to, $target, $msaname;
+	@fields   = split(' ', $_);
+	$target      = $fields[0];
+	$target_from = $fields[4];
+	$target_to   = $fields[5];
+	$pval        = $fields[9];
+	$bitscore    = $fields[10];
+	printf TMPOUTFILE "%10g %10.1f %10d %10d %20s %35s\n", $pval, $bitscore, $target_from, $target_to, $target, $msaname;
     }
 
     #unlink "$resultdir/$msaname.tmp";
@@ -134,4 +145,14 @@ if ($status != 0) { die "FAILED: $command"; }
 $command = "perl $idscript $posfile $sorttmpoutfile > $outfile";
 $status = system("$command");
 if ($status != 0) { die "FAILED: $command"; }
+
+$orfoutfile = $outfile . ".orf";
+$orfposfile = $posfile . ".orf";
+#printf("ORF pos file is %s\n",$orfposfile);
+if( -e $orfposfile) {
+#  printf("getting ORF pos file %s\n",$orfposfile);     
+  $command = "perl $idscript $orfposfile $sorttmpoutfile > $orfoutfile";
+  $status = system("$command");
+  if ($status != 0) { die "FAILED: $command"; }
+}    
     

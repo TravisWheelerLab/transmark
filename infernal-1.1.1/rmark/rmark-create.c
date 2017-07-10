@@ -59,9 +59,9 @@
 #include "esl_msafile2.h"
 
 static char banner[] = "construct a rmark benchmark profile training/test set";
-static char usage1[]  = "[options] <basename> <msafile> <hmmfile>";
-static char usage2[]  = "[options] -S    <basename> <msafile> <seqdb>";
-static char usage3[]  = "[options] --iid <basename> <msafile>\n";
+static char usage1[]  = "[options] <basename> <msafile> <blast path> <hmmfile>";
+static char usage2[]  = "[options] -S    <basename> <msafile> <blast path> <seqdb>";
+static char usage3[]  = "[options] --iid <basename> <msafile> <blast path>\n";
 
 #define SHUF_OPTS "--mono,--di,--markov0,--markov1"   /* toggle group, seq shuffling options          */
 
@@ -147,7 +147,7 @@ struct cfg_s {
 
 static int process_dbfile       (struct cfg_s *cfg, char *dbfile, int dbfmt);
 static int remove_fragments     (struct cfg_s *cfg, ESL_MSA *msa, ESL_MSA **ret_filteredmsa, int *ret_nfrags);
-static int separate_sets        (struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i_am_test);
+static int separate_sets        (struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i_am_test, char * blast_bin_path, char* esl_miniapps_path);
 static int find_sets_greedily   (struct cfg_s *cfg, ESL_MSA *msa, int do_xtest, int **ret_i_am_train, int **ret_i_am_test);
 static int find_sets_by_sampling(struct cfg_s *cfg, ESL_MSA *msa, int nsamples, int do_xtest, int **ret_i_am_train, int **ret_i_am_test);
 //static int synthesize_negatives_and_embed_positives(ESL_GETOPTS *go, struct cfg_s *cfg, ESL_SQ **posseqs, int npos);
@@ -253,23 +253,30 @@ main(int argc, char **argv)
   int           num_decoy_msa_names = 0; /* number of MSAs in the decoy alignment file */
   char *        ssifile = NULL; 
   
-  
-  
+  char *        blast_bin_path = NULL;
+  char *        esl_miniapps_path = NULL;
+
+  int           num_msas_to_process = 0;
+  int           current_msa_number = 0;
+
   /* Parse command line */
   go = esl_getopts_Create(options);
   if (esl_opt_ProcessCmdline(go, argc, argv) != eslOK) cmdline_failure(argv[0], "Failed to parse command line: %s\n", go->errbuf);
   if (esl_opt_VerifyConfig(go)               != eslOK) cmdline_failure(argv[0], "Error in app configuration:   %s\n", go->errbuf);
   if (esl_opt_GetBoolean(go, "-h"))                    cmdline_help(argv[0], go);
 
-  if ((  esl_opt_GetBoolean(go, "--iid") && esl_opt_ArgNumber(go) != 2) || 
-      (! esl_opt_GetBoolean(go, "--iid") && esl_opt_ArgNumber(go) != 3)) { 
+  if ((  esl_opt_GetBoolean(go, "--iid") && esl_opt_ArgNumber(go) != 4) || 
+      (! esl_opt_GetBoolean(go, "--iid") && esl_opt_ArgNumber(go) != 5)) { 
     cmdline_failure(argv[0], "Incorrect number of command line arguments\n");
   }
   basename = esl_opt_GetArg(go, 1); 
   alifile  = esl_opt_GetArg(go, 2);
+  blast_bin_path  = esl_opt_GetArg(go, 3);
+  esl_miniapps_path = esl_opt_GetArg(go, 4);
+
   if(! esl_opt_GetBoolean(go, "--iid")) { 
-    if(esl_opt_GetBoolean(go, "-S")) dbfile  = esl_opt_GetArg(go, 3);
-    else                             hmmfile = esl_opt_GetArg(go, 3);
+    if(esl_opt_GetBoolean(go, "-S")) dbfile  = esl_opt_GetArg(go, 5);
+    else                             hmmfile = esl_opt_GetArg(go, 5);
   }
   alifmt   = eslMSAFILE_STOCKHOLM;
   dbfmt    = eslSQFILE_FASTA;
@@ -368,12 +375,16 @@ main(int argc, char **argv)
        eslx_msafile_OpenFailure(decoymsafp, status);
     }    
 
+    esl_sprintf(&ssifile, "%s.ssi", decoymsafp->bf->filename);
+    //remove preexisting <msa>.ssi file so we can make sure it is up to date
+    remove(ssifile);
+
     create_ssi_index(decoymsafp); 
 
     /* open the ssi file; assume it was created by using the
      * decoy MSA filename appended with '.ssi'
      */ 
-    esl_sprintf(&ssifile, "%s.ssi", decoymsafp->bf->filename);
+//    esl_sprintf(&ssifile, "%s.ssi", decoymsafp->bf->filename);
     status = esl_ssi_Open(ssifile, &(decoymsafp->ssi));
     if      (status == eslERANGE )   esl_fatal("SSI index %s has 64-bit offsets; this system doesn't support them", ssifile);
     else if (status == eslEFORMAT)   esl_fatal("SSI index %s has an unrecognized format. Try recreating, w/ esl-afetch --index", ssifile);
@@ -392,12 +403,12 @@ main(int argc, char **argv)
      * NOTE cfg.L will need to be at least 1000 to hold a complete ORF
      */
     num_decoy_seq_for_neg_seq = 0.05*cfg.negL/1000;
-    printf("DEBUG: Number of decoy sequences to plant per background sequence = %d\n", num_decoy_seq_for_neg_seq);
+    printf("rmark-create: Number of decoy sequences to plant per background sequence = %d\n", num_decoy_seq_for_neg_seq);
     if (num_decoy_seq_for_neg_seq <= 0) esl_fatal("The number of decoy ORFs \
                    to insert is less than 1: %d\n", num_decoy_seq_for_neg_seq);
 
     num_decoy_ORFs = num_decoy_seq_for_neg_seq * cfg.nneg; 
-    printf("DEBUG: Total number of decoy ORFs to plant = %d\n", num_decoy_ORFs);
+    printf("rmark-create: Total number of decoy ORFs to plant = %d\n", num_decoy_ORFs);
                    
     /* initialize ptrs to decoy MSA names */
      for(i=0; i < MAX_DECOY_MSA_NAMES; i++)  
@@ -437,7 +448,7 @@ main(int argc, char **argv)
       num_decoy_msa_names++;             
       esl_msa_Destroy(decoymsa);
     }
-    printf("DEBUG!!!! Found %d alignments in %s\n", num_decoy_msa_names, decoyfile);
+    printf("rmark-create: Found %d alignments in decoy MSA %s\n", num_decoy_msa_names, decoyfile);
   }
   
   if (cfg.abc->type == eslAMINO) esl_composition_SW34(cfg.fq);
@@ -447,15 +458,39 @@ main(int argc, char **argv)
   if(hmmfile != NULL) read_hmmfile(hmmfile, &(cfg.hmm));
   if(dbfile != NULL)  process_dbfile(&cfg, dbfile, dbfmt);
 
+
+  //count the number of MSAs to process so we can print status message to user
+  num_msas_to_process = 0;
+  while ((status = eslx_msafile_Read(afp, &origmsa)) != eslEOF)
+  {
+    if (status != eslOK) 
+      eslx_msafile_ReadFailure(afp, status);
+    num_msas_to_process++;
+    esl_msa_Destroy(origmsa);
+  }
+  eslx_msafile_Close(afp);
+
+  printf("rmark-create: Found %d alignments in %s\n", num_msas_to_process, alifile);
+
+  // reopen the alignment file to so we can start reading the MSAs
+  // and reset the file pointer to the beginning of the file
+  if((status = eslx_msafile_Open(&(cfg.abc), alifile, NULL, alifmt, NULL, &afp)) != eslOK) { 
+    eslx_msafile_OpenFailure(afp, status);
+  }
+
   /* Read and process MSAs one at a time  */
   nali = 0; 
   npos = 0;
   poslen_total = 0;
+  current_msa_number = 0;
   while ((status = eslx_msafile_Read(afp, &origmsa)) == eslOK)
     {
       npos_this_msa = 0;
       if(origmsa->name == NULL) esl_fatal("All msa's must have a valid name (#=GC ID), alignment %d does not.", nali);
       esl_msa_ConvertDegen2X(origmsa); 
+
+      current_msa_number++;
+      printf("\n\nrmark-create: Processing %s MSA to get training and test sets; %d of %d\n", origmsa->name, current_msa_number, num_msas_to_process);
 
       remove_fragments(&cfg, origmsa, &msa, &nfrags);
 
@@ -468,7 +503,7 @@ main(int argc, char **argv)
        *  - more than cfg->idthresh2 similar to >=1 sequences in the test set
       */
       if(! esl_opt_GetBoolean(go, "--skip")) { 
-        separate_sets (&cfg, msa, &i_am_train, &i_am_test);
+        separate_sets (&cfg, msa, &i_am_train, &i_am_test, blast_bin_path, esl_miniapps_path);
         ntrainseq = esl_vec_ISum(i_am_train, msa->nseq);
         ntestseq  = esl_vec_ISum(i_am_test,  msa->nseq);
       }
@@ -600,7 +635,7 @@ main(int argc, char **argv)
   if (status != eslEOF)           eslx_msafile_ReadFailure(afp, status);
   else if (nali   == 0)           esl_fatal("No alignments found in file %s\n", alifile);
 
-printf("DEBUG!!!! pos len total: %ld\n", poslen_total);
+  //printf("rmark-create: pos len total: %ld\n", poslen_total);
 
   /* Make sure we summed length of the positives isn't above the max allowed */
   if(poslen_total > (esl_opt_GetReal(go, "-X") * cfg.nneg * cfg.negL)) { 
@@ -709,7 +744,7 @@ add_decoy_ORFs_to_positive_sequence_list(struct cfg_s *cfg,
     {
       /* randomly select an MSA name */
       decoy_msa_index = esl_rnd_Roll(cfg->r, num_decoy_msa_names); /* index into array of names */
-      printf("DEBUG: Name of decoy MSA to retrieve is %s at index %d\n", decoy_msa_names[decoy_msa_index],decoy_msa_index); 
+      printf("rmark-create: Name of decoy MSA to retrieve is %s at index %d\n", decoy_msa_names[decoy_msa_index],decoy_msa_index); 
       status = eslx_msafile_PositionByKey(decoymsafp, decoy_msa_names[decoy_msa_index]);
       if (status == eslENOTFOUND) 
              esl_fatal("MSA %s not found in SSI index for file %s\n", 
@@ -731,7 +766,7 @@ add_decoy_ORFs_to_positive_sequence_list(struct cfg_s *cfg,
 
       /* Randomly select an MSA sequence */
       seq_num = esl_rnd_Roll(cfg->r, decoymsa->nseq); /*  0..decoymsa->nseq -1 */
-      printf("DEBUG: Decoy sequence to retrieve is at index %d out of %d sequences\n", seq_num, decoymsa->nseq); 
+      printf("rmark-create: Decoy sequence to retrieve is at index %d out of %d sequences\n", seq_num, decoymsa->nseq); 
 
       if ((status = esl_sq_FetchFromMSA(decoymsa, seq_num, &decoy_seq)) != eslOK)
           esl_fatal("Could not fetch sequence number %d from MSA.");
@@ -916,8 +951,8 @@ remove_fragments(struct cfg_s *cfg, ESL_MSA *msa, ESL_MSA **ret_filteredmsa, int
  *          ret_i_am_test  - [0..msa->nseq-1]: 1 if a test seq, 0 if not 
  */
 static int
-separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i_am_test)
-{      
+separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i_am_test, char * blast_bin_path, char * esl_miniapps_path)
+{
   ESL_MSA   *trainmsa  = NULL;
   ESL_MSA   *test_msa  = NULL;
   int *assignment = NULL;
@@ -937,13 +972,33 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
   int tested_cnt;
   int rnd;
   double pctid;
+  ESL_SQ * p_test_seq = NULL;
+  ESL_SQ * p_train_seq = NULL;
 
-    
+  char       removed_test_sequences_file[32] = "removed_test_sequences.txt";
+  char       train_seq_tmpfile[256] = "esltrainsequences";
+  char       test_seq_tmpfile[32] = "esltestseqtmpXXXXXX";
+  char       train_msa_tmpfile[32] = "esltrainmsatmpXXXXXX";
+
+  char       remove_file_buf[256];
+
+  char       *train_msa_tmp_msg         = "failed to create temp file to hold training msa";
+  char       *train_tmp_msg         = "failed to create temp file to hold training seq";
+  char       *test_tmp_msg         = "failed to create temp file to hold test seq";
+  FILE       *test_seq_fp          = NULL;
+  FILE       *train_seq_fp          = NULL;
+  FILE       *train_msa_fp         = NULL;
+
+  FILE       *removed_test_sequences_fp = NULL;
+  char cmdbuf[256];
+
   ESL_ALLOC(i_am_train,         sizeof(int) * msa->nseq);
   ESL_ALLOC(i_am_possibly_test, sizeof(int) * msa->nseq);
   ESL_ALLOC(i_am_test,          sizeof(int) * msa->nseq);
   ESL_ALLOC(tested,             sizeof(int) * msa->nseq);
-  
+ 
+//  printf("id threshold 1:%.3f\n", cfg->idthresh1);
+ 
   if ((status = esl_msacluster_SingleLinkage(msa, cfg->idthresh1, &assignment, &nin, &nc)) != eslOK) goto ERROR;
   ctrain = esl_vec_IArgMax(nin, nc);
   ntrain = esl_vec_IMax(nin, nc);
@@ -964,11 +1019,235 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
     return eslOK;
   }
 
+#if 0
+//DEBUG PRINTING
+        printf("\nassignment of sequences\n");
+        ESL_SQ *pseq = NULL;
+        for(i = 0; i < msa->nseq; i++) { 
+//          if(i_am_train[i]) { 
+            printf("assignment:%d, i am train:%d\n",assignment[i], i_am_train[i]);
+            esl_sq_FetchFromMSA(msa, i, &pseq);
+            esl_sqio_Write(stdout, pseq, eslSQFILE_FASTA, FALSE);
+//          }
+        }
+// END DEBUG PRINTING 
+
+
+//DEBUG PRINTING
+        printf("\ntraining sequences\n");
+        pseq = NULL;
+        for(i = 0; i < trainmsa->nseq; i++) { 
+//          if(i_am_train[i]) { 
+            esl_sq_FetchFromMSA(trainmsa, i, &pseq);
+            esl_sqio_Write(stdout, pseq, eslSQFILE_FASTA, FALSE);
+//          }
+        }
+// END DEBUG PRINTING 
+#endif
+
+
   /* Put all the other sequences into an MSA of their own; from these, we'll
    * choose test sequences.
    */
-  for (i = 0; i < msa->nseq; i++) i_am_possibly_test[i] = (assignment[i] != ctrain) ? 1 : 0;
+//  for (i = 0; i < msa->nseq; i++) i_am_possibly_test[i] = (assignment[i] != ctrain) ? 1 : 0;
+//  if ((status = esl_msa_SequenceSubset(msa, i_am_possibly_test, &test_msa))       != eslOK) goto ERROR;
+
+  //look at each sequence and find out if it can be a test(target) sequence
+  //we have to use blast or some tool like it to measure the percent identity
+  //becuase the esl_dst_XPairId function is too simplistic and doesn't catch
+  //the situation where two sequences are almost identical but frame shifted 
+
+  if ((removed_test_sequences_fp = fopen(removed_test_sequences_file, "a")) == NULL)  
+      esl_fatal("Failed to open removed test sequences file %s\n", removed_test_sequences_file);  
+
+  printf("rmark-create: Determining if training sequences in MSA %s are greater than some percentage identical to test sequences\n", msa->name);
+
+
+  //create a temporary file to hold the MSA
+  snprintf(train_msa_tmpfile, sizeof(train_msa_tmpfile), "%s", "esltrainmsatmpXXXXXX");
+  train_msa_fp = NULL;
+  if (esl_tmpfile_named(train_msa_tmpfile, &train_msa_fp) != eslOK) esl_fatal(train_msa_tmp_msg);
+  eslx_msafile_Write(train_msa_fp, trainmsa, eslMSAFILE_STOCKHOLM);
+  fclose(train_msa_fp);
+
+  snprintf(train_seq_tmpfile, sizeof(train_seq_tmpfile), "%s%s", trainmsa->name, "_trainseqs");
+  // write the training sequences in the MSA to a file
+  snprintf(cmdbuf, sizeof(cmdbuf), "%s/esl-reformat -o %s fasta  %s", esl_miniapps_path, train_seq_tmpfile, train_msa_tmpfile);
+//  printf("cmd: %s\n",cmdbuf);
+  system(cmdbuf);
+
+  // create a blast DB for the training sequence file
+  snprintf(cmdbuf, sizeof(cmdbuf), "%s/makeblastdb -dbtype nucl -in %s", blast_bin_path, train_seq_tmpfile);
+//  printf("cmd: %s\n",cmdbuf);
+  system(cmdbuf);
+
+  // for each sequence
+  for (i = 0; i < msa->nseq; i++){
+      //first assume it is not a test sequence; we will find out below if it actual is a test sequence
+      i_am_possibly_test[i] = 0;
+      //if the sequence is not a training sequence it is a potential test sequence
+      if(assignment[i] != ctrain) {
+          //create a temporary file to hold the test sequence
+          snprintf(test_seq_tmpfile, sizeof(test_seq_tmpfile), "%s", "esltestseqtmpXXXXXX");
+          if (esl_tmpfile_named(test_seq_tmpfile, &test_seq_fp) != eslOK) esl_fatal(test_tmp_msg);
+
+          // get the potential test sequence from the MSA
+          p_test_seq = NULL;
+          esl_sq_FetchFromMSA(msa, i, &p_test_seq);
+          esl_sqio_Write(test_seq_fp, p_test_seq, eslSQFILE_FASTA, FALSE);
+          fclose(test_seq_fp);
+
+          //printf("created temporary file %s to hold test sequence\n", test_seq_tmpfile);
+
+          // assume initially that the sequence can be a test sequence
+          i_am_possibly_test[i] = 1;
+
+          // find out if the potential test sequence is more than some threshold percent identical to any other training sequence
+          // if it is then throw it out we don't want to use it as a test sequence
+#if 0
+          snprintf(cmdbuf, sizeof(cmdbuf), "%s/blastn -word_size 4 -evalue 100 -db %s -query %s -outfmt '7 pident'", blast_bin_path, train_seq_tmpfile, test_seq_tmpfile);
+//        printf("cmd: %s\n",cmdbuf);
+
+          float percent_identity = 0.0;
+          float max_percent_identity = 0.0;
+          FILE *ppt;
+          ppt = popen(cmdbuf, "r");
+          if (ppt != NULL) {
+              while (1) {
+                  char *line;
+                  char buf[1000];
+                  line = fgets(buf, sizeof buf, ppt);
+                  if (line == NULL) break;
+                  //printf("line:%s\n",line);
+                  if (line[0] == '#') continue;
+                  percent_identity = atof(line);
+                  if (percent_identity > max_percent_identity)
+                      max_percent_identity = percent_identity; 
+              }
+              pclose(ppt);
+              percent_identity = max_percent_identity;
+          }
+          else
+              printf("ERROR: Output of blastn not found\n");
+#endif
+
+          snprintf(cmdbuf, sizeof(cmdbuf), "%s/blastn -word_size 4 -evalue 100 -db %s -query %s -outfmt '10 pident length qlen'", blast_bin_path, train_seq_tmpfile, test_seq_tmpfile);
+//        printf("cmd: %s\n",cmdbuf);
+
+          float percent_identity = 0.0;
+          float max_percent_identity = 0.0;
+          int   query_length = 0;
+          int   alignment_length = 0;
+          FILE *ppt;
+          ppt = popen(cmdbuf, "r");
+          if (ppt != NULL) {
+              while (1) {
+                  char *line;
+                  char buf[1000];
+                  line = fgets(buf, sizeof buf, ppt);
+                  if (line == NULL) break;
+                  //printf("line:%s\n",line);
+                  if (line[0] == '#') continue;
+                  char * pch;
+                  pch = strtok (line,",");
+                  if (pch != NULL) {
+                      percent_identity = atof(pch);
+                      pch = strtok (NULL, ",");
+                      alignment_length = atoi(pch);
+                      pch = strtok (NULL, ",");
+                      query_length = atoi(pch);
+                      //if the alignment is almost as long as the query sequence length
+                      //then consider the percent identity; we don't want to use the percent
+                      //identity of a small local alignment as representative of 
+                      //the percent identity of the sequences
+                      if ( alignment_length > .9 * query_length) {
+                          if (percent_identity > max_percent_identity)
+                              max_percent_identity = percent_identity;
+                      }
+                  }
+                  else
+                      printf("ERROR: Cannot process output in calculating percent identity\n");
+              }
+              pclose(ppt);
+              percent_identity = max_percent_identity;
+          }
+          else
+              printf("ERROR: Output of blastn not found\n");
+
+
+          if (percent_identity > 60.0) {
+              printf("Test sequence %s will not be used since percent identity %3.2f is greater than threshold 60.00\n", p_test_seq->name, percent_identity);
+              i_am_possibly_test[i] = 0;
+              fprintf(removed_test_sequences_fp, "%s\n",p_test_seq->name);
+          }
+
+          remove(test_seq_tmpfile);
+      }
+  }
+
+  remove(train_seq_tmpfile);
+
+  snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nin");
+  remove(remove_file_buf);
+  snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nsq");
+  remove(remove_file_buf);
+  snprintf(remove_file_buf, sizeof(remove_file_buf), "%s%s", train_seq_tmpfile, ".nhr");
+  remove(remove_file_buf);
+
+  remove(train_msa_tmpfile);
+
+  if (removed_test_sequences_fp != NULL)
+      fclose(removed_test_sequences_fp);
+
+  //if there are no sequences left in the test set then we are done
+  if (esl_vec_ISum(i_am_possibly_test, msa->nseq) == 0) {
+    printf("\nrmark-create: Cannot use MSA %s; no training sequences are different enough from test sequences\n", msa->name);
+    esl_vec_ISet(i_am_train, msa->nseq, 0);
+    esl_vec_ISet(i_am_test,  msa->nseq, 0);
+    free(assignment);
+    free(nin);
+    free(i_am_possibly_test);
+    esl_msa_Destroy(trainmsa);
+    *ret_i_am_train = i_am_train;
+    *ret_i_am_test  = i_am_test;
+    return eslOK;
+  }
+
+
   if ((status = esl_msa_SequenceSubset(msa, i_am_possibly_test, &test_msa))       != eslOK) goto ERROR;
+
+#if 0
+  /* If there are no test seqs went in the test msa, none are left for testing; so we're done here */
+  if (test_msa->nseq == 0) {
+    esl_vec_ISet(i_am_train, msa->nseq, 0);
+    esl_vec_ISet(i_am_test,  msa->nseq, 0);
+    free(assignment);
+    free(nin);
+    free(i_am_possibly_test);
+    esl_msa_Destroy(trainmsa);
+    esl_msa_Destroy(test_msa);
+    *ret_i_am_train = i_am_train;
+    *ret_i_am_test  = i_am_test;
+    return eslOK;
+  }
+#endif
+
+
+
+
+#if 0
+//DEBUG PRINTING
+        printf("\npossible testing sequences\n");
+        pseq = NULL;
+        for(i = 0; i < test_msa->nseq; i++) { 
+//          if(i_am_possibly_test[i]) { 
+            esl_sq_FetchFromMSA(test_msa, i, &pseq);
+            esl_sqio_Write(stdout, pseq, eslSQFILE_FASTA, FALSE);
+//          }
+        }
+// END DEBUG PRINTING 
+#endif
+
 
   /* Cluster those test sequences. */
   free(nin);         nin        = NULL;
@@ -988,7 +1267,7 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
       rnd = nskip = esl_rnd_Roll(cfg->r, nin[c]); /* pick a random seq in this cluster to be the test. */
       if (tested[rnd]) continue;
       
-//      printf("nskip: %d\n", nskip);
+      //printf("nskip: %d\n", nskip);
       for (i=0, i2=0; i < msa->nseq; i++) { /* i is idx in orig msa, i2 is idx in test_msa */
         if(i_am_possibly_test[i]) { /* i is in test_msa */
           if (assignment[i2] == c) {
@@ -999,10 +1278,10 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
                      esl_dst_XPairId(msa->abc, msa->ax[i], msa->ax[j], &pctid, NULL, NULL);
                      if (pctid >= cfg->idthresh3){
                        found = 1;
-//                       printf ("good: (%d) %d,%d = %.3f\n", c,i,j,pctid);
+                       //printf ("good: (%d) %d,%d = %.3f\n", c,i,j,pctid);
                        break;
-//                     } else {
-//                     printf ("bad: (%d,%d) %d,%d = %.3f\n", c,nin[c],i,j,pctid);
+                     } else {
+                     //printf ("bad: (%d,%d) %d,%d = %.3f\n", c,nin[c],i,j,pctid);
                      }
                  }  
                }
@@ -1025,6 +1304,33 @@ separate_sets(struct cfg_s *cfg, ESL_MSA *msa, int **ret_i_am_train, int **ret_i
 //  if (msa->nseq == 20) {
 //    exit(0);
 //  }
+
+
+#if 0
+//DEBUG PRINTING
+        printf("\ntraining sequences\n");
+        pseq = NULL;
+        for(i = 0; i < msa->nseq; i++) { 
+          if(i_am_train[i]) { 
+            esl_sq_FetchFromMSA(msa, i, &pseq);
+            esl_sqio_Write(stdout, pseq, eslSQFILE_FASTA, FALSE);
+          }
+        }
+// END DEBUG PRINTING 
+
+
+//DEBUG PRINTING
+        printf("\ntesting sequences\n");
+        pseq = NULL;
+        for(i = 0; i < msa->nseq; i++) { 
+          if(i_am_test[i]) { 
+            esl_sq_FetchFromMSA(msa, i, &pseq);
+            esl_sqio_Write(stdout, pseq, eslSQFILE_FASTA, FALSE);
+          }
+        }
+// END DEBUG PRINTING 
+
+#endif
 
   esl_msa_Destroy(test_msa);
   free(nin);

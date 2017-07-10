@@ -6,7 +6,8 @@
 #
 # This script is normally called by rmark-master.pl; its command line
 # syntax is tied to rmark-master.pl.
-# x-exonerate doesn't use <modeldir>, but it's passed in so that
+# x-exonerate uses <modeldir> as the path to Exonerate
+# Other scripts do not us thi path but it's passed in so that
 # rmark-master.pl can use a consistent command line structure for
 # all search programs (cmsearch uses it, for example).
 #
@@ -35,7 +36,7 @@ $tmpoutfile = $outfile . ".tmp";
 $sorttmpoutfile = $outfile . ".tmp.sort";
 
 $idscript   = "$scriptdir/rmark-idpositives.pl";
-$exonerate  = "$execdir/exonerate";
+$exonerate  = "$modeldir/exonerate";
 $afetch     = "$execdir/esl-afetch";
 $sfetch     = "$execdir/esl-sfetch";
 $reformat   = "$execdir/esl-reformat";
@@ -54,7 +55,7 @@ if(! -e $reformat) {
     if(! -e $reformat) { die "$reformat does not exist"; }
 }    
 if(! -e $exonerate) { 
-    $exonerate = "/home/um/wshands/Exonerate/exonerate-2.2.0-x86_64/bin/exonerate";
+#    $exonerate = "~/bin/exonerate";
     if(! -e $exonerate) { die "$exonerate does not exist"; }
 }    
 
