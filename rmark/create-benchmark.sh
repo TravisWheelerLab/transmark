@@ -74,7 +74,6 @@ esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst > 7362_alignme
 
 COMMENT
 
-
 echo "making the benchmark directory $transmark_benchmark_dir"
 mkdir $transmark_benchmark_dir
 echo "cd'ing into the benchmark directory $transmark_benchmark_dir"
@@ -102,8 +101,9 @@ ${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.2  -N 1
 echo "creating a DB for tblastn to use"
 ${tblastn_path}/makeblastdb -dbtype nucl -in transmarkORFandDNA.fa
 
+
 echo "creating the file that has the amino acid MSAs that have the sequences will be used as query sequences against the background sequences"
-${transmarkpath}/../build_protein_training_seeds.pl transmarkAminoAcid.msa transmarkORFandDNA.msa ../Pfam-A.v27.seed
+${transmarkpath}/build_protein_training_seeds.pl transmarkAminoAcid.msa transmarkORFandDNA.msa ../Pfam-A.v27.seed
 
 echo "creating the HMMs to use as queries in phmmert from the amino acid MSAs"
 ${phmmert_path}/hmmbuild transmarkAminoAcid.hmm transmarkAminoAcid.msa
