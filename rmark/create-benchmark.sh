@@ -5,20 +5,6 @@ set -o nounset
 #stop the script if any command fails (returns non zero)
 set -o errexit
 
-#The all_alignments.stk file was created by Travis from Pfam DB
-#and contains all the multiple sequence alignments in the Pfam DB
-#to get the number of MSAs in the file
-#grep "\/\/" ../all_alignments.stk   | wc
-#  14724   14724   44172
-
-#git clone https://github.com/EddyRivasLab/hmmer.git
-#git checkout translatedsearch
-#cd 
-#phmmert_path=$(pwd)/hmmer/src
-
-
-
-
 
 phmmert_path=/home/um/wshands/gitroot/hmmer/src
 esl_miniapps_path=${phmmert_path}/../easel/miniapps
@@ -37,19 +23,34 @@ else
     exit 1
 fi
 
-echo before comment
-: <<'COMMENT'
+#echo before comment
+#: <<'COMMENT'
 
 #In some organisms only UGA is decoded as a stop codon, while UAG and UAA are 
-#reassigned as sense codons. So what's happened is that we've asked easel to translate the DNA into proteins using the default codon table, but that table doesn't apply here. I haven't actually looked, but I'd bet money the the ORFs called by easel's translate code are all being stopped by stop codons "UAG" and "UAA" ... which aren't actually stop codons in Paramecium.
+#reassigned as sense codons. So what's happened is that we've asked easel to 
+#translate the DNA into proteins using the default codon table, but that table
+# doesn't apply here. I haven't actually looked, but I'd bet money the the ORFs
+# called by easel's translate code are all being stopped by stop codons "UAG" 
+#and "UAA" ... which aren't actually stop codons in Paramecium.
 
 #How to overcome?  In this case, we could ask the translate code to use the ciliate code (you'd use "-c 6"). 
 
-#But that's not really the solution to our problem. The thing is: we're building a benchmark "genome" with protein-coding sequences from all over the tree of life. That's not realistic, and it's getting us in trouble. Normally, when using phmmert, you'd know which kind of organism you were working with, so could just name the codon usage table at runtime with -c. But we can't do that here since each inserted sequence is coming from a different genome.  
+#But that's not really the solution to our problem. The thing is: we're
+# building a benchmark "genome" with protein-coding sequences from all over the
+# tree of life. That's not realistic, and it's getting us in trouble. Normally, 
+#when using phmmert, you'd know which kind of organism you were working with, so 
+#could just name the codon usage table at runtime with -c. But we can't do that 
+#here since each inserted sequence is coming from a different genome.  
 
-#I think the solution is to restrict which sequences we put into the benchmark, ensuring that they all work with the standard translation table.  The way I'd do that is to take the DNA alignment file and run esl-translate on every sequence. Only keep sequences for which the translation finds a full-length ORF. After paring the list of sequences per alignment in this way, you could then go back, and run the benchmark-creation script on the alignment. 
+#I think the solution is to restrict which sequences we put into the benchmark, 
+#ensuring that they all work with the standard translation table.  The way I'd 
+#do that is to take the DNA alignment file and run esl-translate on every sequence.
+# Only keep sequences for which the translation finds a full-length ORF. After paring 
+#the list of sequences per alignment in this way, you could then go back, and run 
+#the benchmark-creation script on the alignment. 
+
 #echo "Filtering the DNA MSAs so that only they only contain sequences with ORFs as long as the DNA sequence"⏎
-#${transmarkpath}/../filter_sequences_with_same_size_ORF.pl all_filtered_ORF_alignments.stk $all_DNA_MSA_file⏎
+${transmarkpath}/../filter_sequences_with_same_size_ORF.pl all_filtered_ORF_alignments.stk $all_DNA_MSA_file⏎
 
 #First get the names of all the alignments
 echo "getting the names of the protein MSAs"
@@ -72,7 +73,7 @@ esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst > 7362_alignme
 
 
 
-COMMENT
+#COMMENT
 
 echo "making the benchmark directory $transmark_benchmark_dir"
 mkdir $transmark_benchmark_dir
@@ -92,10 +93,12 @@ tblastn_path=$(pwd)/ncbi-blast/ncbi-blast-2.6.0+/bin/
 
 
 echo "generating the DNA background benchmark with decoy shuffled ORFs inserted into the background"
-#${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
 
-#smaller test background sequence
-${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+#one large test background sequence
+#${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+
+#one small test bachground sequence
 #${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.75 -N 1 -L 1000000 -R 10 -E 10 --maxtrain 30 --maxtest 20 -D ../Pfam-A.v27.seed transmarkORFandDNA ../150_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
 
 echo "creating a DB for tblastn to use"
