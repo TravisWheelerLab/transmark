@@ -1,5 +1,5 @@
 CC       = gcc -std=gnu99
-CFLAGS   = -g -O0 -fomit-frame-pointer -fstrict-aliasing -pthread
+CFLAGS   = -g -O3 -fomit-frame-pointer -fstrict-aliasing -pthread
 SIMDFLAGS= -msse2 -msse3
 CPPFLAGS = 
 LDFLAGS  = 

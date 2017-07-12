@@ -11,8 +11,7 @@ esl_miniapps_path=${phmmert_path}/../easel/miniapps
 
 export PATH=${phmmert_path}/../easel/miniapps:$PATH
 
-#transmarkpath=/home/um/wshands/gitroot/transmark
-transmarkpath=/home/um/wshands/refactor_of_transmark/transmark
+transmarkpath=/home/um/wshands/gitroot/transmark
 
 
 if [ $# -gt 1 ]; then
@@ -22,6 +21,8 @@ else
     echo "Your command line contains less than two arguments, the first argument must be the file of all DNA MSAs, the second is the benchmark directory name  to create"
     exit 1
 fi
+
+echo "DNA MSA file is $all_DNA_MSA_file"
 
 #echo before comment
 #: <<'COMMENT'
@@ -49,8 +50,8 @@ fi
 #the list of sequences per alignment in this way, you could then go back, and run 
 #the benchmark-creation script on the alignment. 
 
-#echo "Filtering the DNA MSAs so that only they only contain sequences with ORFs as long as the DNA sequence"⏎
-${transmarkpath}/../filter_sequences_with_same_size_ORF.pl all_filtered_ORF_alignments.stk $all_DNA_MSA_file⏎
+#echo "Filtering the DNA MSAs so that only they only contain sequences with ORFs as long as the DNA sequence"
+${transmarkpath}/filter_sequences_with_same_size_ORF.pl all_filtered_ORF_alignments.stk $all_DNA_MSA_file
 
 #First get the names of all the alignments
 echo "getting the names of the protein MSAs"

@@ -7,8 +7,7 @@ set -o errexit
 
 #create the table of E-Values for the hits for Positive inserted sequences by the tools
 #sort by phmmert E-Values (hmm)
-#plot_src_path=/home/um/wshands/gitroot/transmark/rmark
-plot_src_path=/home/um/wshands/refactor_of_transmark/transmark/rmark
+plot_src_path=/home/um/wshands/gitroot/transmark/rmark
 
 $plot_src_path/compute-glob-table.pl hmm > hmmout
 
