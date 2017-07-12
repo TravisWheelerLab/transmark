@@ -1,86 +1,28 @@
+# git clone HMMER 
+#https://github.com/EddyRivasLab/hmmer
+git clone https://github.com/EddyRivasLab/hmmer.git
+#checkout the translatedsearch branch if it has not already been merged into master 
+git checkout translatedsearch
+# build HMMER using the instructions in the repo
+
+# git clone the transmark benchmark code
+# https://github.com/TravisWheelerLab/transmark.git
+git clone https://github.com/TravisWheelerLab/transmark.git
+#edit the create-benchmark.sh script and set the phmmert_path variable to the path where HMMER executables are located:
+#e.g. phmmert_path=/home/ubuntu/gitroot/hmmer/src
+# do the same for the transmarkpath variable:
+#e.g. transmarkpath=/home/um/ubuntu/transmark
+
+# edit the create-plots.sh script and set the plot_src_path to point to the transmark scripts directory: 
+# e.g. plot_src_path=/home/ubuntu/transmark/rmark
+
+#Locate an MSA file of all the DNA alignments of protein families in the PFam DB. I got this file from professor Travis Wheeler at the Universit of Montana. travis.wheeler@umontana.edu and http://wheelerlab.org/
+
+#create and run the benchmark:
+#>create-benchmark.sh <all DNA PFam alignments file> <path to a directory that will be created for results>
+>create-benchmark.sh all_DNA_PFam_alignments.stk /home/ubuntu/my_benchmark
+# cd into results dir and run the create-plots.sh script
+# e.g. cd /home/ubuntu/my_benchmark
+# e.g. ./home/ubuntu/transmark/rmark/create-plots.sh
 
 
-#The all_alignments.stk file was created by Travis from Pfam DB
-#and contains all the multiple sequence alignments in the Pfam DB
-#to get the number of MSAs in the file
-% grep "\/\/" ../all_alignments.stk   | wc
-  14724   14724   44172
-
-#First get the names of all the alignments
-% esl-alistat all_alignments.stk  | awk '/Alignment name/ { print $3}' > all_ali_names.lst
-
-#Just subsample 50% of all MSAs so there are not too many families and benchmark is smaller
-#and get the names of the alignments to use
-% sort -R --random-source all_ali_names.lst all_ali_names.lst | head -n 7362 > some_ali_names.lst
-(using "--random-source all_ali_names.lst" to set the seed)
-
-#now get the named  MSAs from the file with all the MSAs
-% esl-afetch -f  all_alignments.stk some_ali_names.lst > 7362_alignments.stk
-
-#put my_msub in path
-#my_msub should be in repository
-
-#commands to generate test benchmark:
-#generate the DNA background benchmark with decoy shuffled ORFs inserted into the background
-wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ /home/um/wshands/infernal/Users/traviswheeler/src/infernal-1.1.1/rmark/rmark-create  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D /data/wshands/harderpfamdnamark/Pfam-A.v27.seed rmarkinsertORFandDNA /data/wshands/harderpfamdnamark/7362_alignments.stk  /home/um/wshands/infernal/Users/traviswheeler/src/infernal-1.1.1/rmark/rmark3-bg.hmm
-
-#create a DB for tblastn to use
-#used ncbi-blast-2.2.31+-x64-linux.tar.gz
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ makeblastdb -dbtype nucl -in rmarkinsertORFandDNA.fa
-
-#create the file that has the amino acid MSAs that have the sequences will be used as query sequences
-#against the background sequences
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../build_protein_training_seeds.pl
-
-#create the HMMs to use as queries from the amino acid MSAs
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ hmmbuild rmarkinsertAA.hmm rmarkinsertAA.msa
-
-
-#do the searches 
-#NOTE the result directories, e.g. tbn.w3.e100.fpw must be created before the command below is called
-#otherwise the script will try to write to the directory possibly before it is created and you will loose
-#result data
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ perl ../rmark/rmark-master.pl -F -N 16 -C rmarkinsertAA.hmm  $H_PATH ../rmark ../rmark ptr.std.e100 ../rmark_opts/phmmert.e100.opts rmarkinsertORFandDNA ../rmark/x-phmmert  1000000
-
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ perl ../rmark/rmark-master.pl -G rmarkinsertAA  -F -N 16 $H_PATH ../rmark ../rmark tbn.w3.e100.cons ../rmark_opts/tblastn-w3-e100.opts rmarkinsertORFandDNA ../rmark/x-tblastn-cons 1000000
-
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ perl ../rmark/rmark-master.pl -G rmarkinsertAA  -F -N 16 $H_PATH ../rmark ../rmark tbn.w3.e100.fpw ../rmark_opts/tblastn-w3-e100.opts rmarkinsertORFandDNA ../rmark/x-tblastn-fpw 1000000
-
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ perl ../rmark/rmark-master.pl -G rmarkinsertAA  -F -N 16 $H_PATH ../rmark ../rmark exonerate.fpw ../rmark_opts/exonerate.opts rmarkinsertORFandDNA ../rmark/x-exonerate-fpw  1000000
-
-#To get status of the jobs:
-[wshands@scyld ptr.std.e100]$ qstat -u wshands
-
-#gather statistics for how many positive embedded squences were found by the search tools
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.cons 1" 1
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.fpw 1" 1
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA  ptr.std.e100 1" 1
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh pfamtransDNAmark exonerate.fpw 1" 1
-
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.fpw 1 .orf" 1
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA tbn.w3.e100.cons 1 .orf" 1
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ my_msub gather "../rmark/rmark-pp.sh rmarkinsertORFandDNA  ptr.std.e100 1 .orf" 1
-
-#create the table that compares the E-Values of the hits on the positive inserted target sequences
-#found by each tool
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl fpw > fpwout
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl hmm > hmmout
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl cons > consout
-
-#create the table that compares the E-Values of the false positive hits (hits on the decoy shuffled ORF sequences)
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl fpw orf > fpworfout
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl cons orf > consorfout
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ ../rmark/compute-glob-table.pl hmm orf > hmmorfout
-
-#to make plots of shuffled orf hits
-[whands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ cat ../rmark/plot.shuffledORFhits.R | R --vanilla
-#make a plot of the positive hits
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ cat ../rmark/plot.POShits.R | R --vanilla
-
-
-
-#create the difference in log E-Values between phmmert and tblastn cons
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastncons\tphmmert\tlogdiff"} FNR>1 {printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$3,$4,(log($4)/log(10))-(log($3)/log(10)) ) }' hmmoutmin-170 | sort -g -b -t$'\t' -k 4,8  > logevaluediff
-
-#create the difference in log E-Values between phmmert and tblastn fpw
-[wshands@scyld transsearchorf_-R_10_-E_10_7362fam_2016_10_29]$ awk  'BEGIN { print "                               search\ttblastncons\tphmmert\tlogdiff"} FNR>1 {printf("%40s\t%1.2e\t%1.2e\t%1.2e\n", $1,$2,$4,(log($4)/log(10))-(log($2)/log(10)) ) }' hmmoutmin-170 | sort -g -b -t$'\t' -k 4,8  > logevaluediff
