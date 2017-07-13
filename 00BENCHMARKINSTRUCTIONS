@@ -1,14 +1,16 @@
 # git clone HMMER 
 #https://github.com/EddyRivasLab/hmmer
-git clone https://github.com/EddyRivasLab/hmmer.git
+>git clone https://github.com/EddyRivasLab/hmmer.git
+
 #checkout the translatedsearch branch if it has not already been merged into master 
-git checkout translatedsearch
+>git checkout translatedsearch
 # build HMMER using the instructions in the repo
 
 # git clone the transmark benchmark code
 # https://github.com/TravisWheelerLab/transmark.git
-git clone https://github.com/TravisWheelerLab/transmark.git
-#edit the create-benchmark.sh script and set the phmmert_path variable to the path where HMMER executables are located:
+>git clone https://github.com/TravisWheelerLab/transmark.git
+#edit the create-benchmark.sh script and set the phmmert_path variable to the
+#path where HMMER executables are located:
 #e.g. phmmert_path=/home/ubuntu/gitroot/hmmer/src
 # do the same for the transmarkpath variable:
 #e.g. transmarkpath=/home/um/ubuntu/transmark
@@ -16,13 +18,17 @@ git clone https://github.com/TravisWheelerLab/transmark.git
 # edit the create-plots.sh script and set the plot_src_path to point to the transmark scripts directory: 
 # e.g. plot_src_path=/home/ubuntu/transmark/rmark
 
-#Locate an MSA file of all the DNA alignments of protein families in the PFam DB. I got this file from professor Travis Wheeler at the Universit of Montana. travis.wheeler@umontana.edu and http://wheelerlab.org/
+#Locate an MSA file of all the DNA alignments for protein families in the PFam DB
+#and an MSA file of all the amino acid alignments for protein families in the PFam DB
+#I got these files from professor Travis Wheeler at the University of Montana. 
+#travis.wheeler@umontana.edu and http://wheelerlab.org/
 
 #create and run the benchmark:
-#>create-benchmark.sh <all DNA PFam alignments file> <path to a directory that will be created for results>
->create-benchmark.sh all_DNA_PFam_alignments.stk /home/ubuntu/my_benchmark
+#>create-benchmark.sh <all DNA PFam alignments file> <all MSA PFam alignments file> <path to a directory that will be created for results>
+>create-benchmark.sh all_DNA_PFam_alignments.stk ../Pfam-A.v27.seed /home/ubuntu/my_benchmark
+
 # cd into results dir and run the create-plots.sh script
-# e.g. cd /home/ubuntu/my_benchmark
-# e.g. ./home/ubuntu/transmark/rmark/create-plots.sh
+>cd /home/ubuntu/my_benchmark
+>./home/ubuntu/transmark/rmark/create-plots.sh
 
 
