@@ -14,15 +14,19 @@ export PATH=${phmmert_path}/../easel/miniapps:$PATH
 transmarkpath=/home/um/wshands/gitroot/transmark
 
 
-if [ $# -gt 1 ]; then
+if [ $# -gt 2 ]; then
     all_DNA_MSA_file=$1
-    transmark_benchmark_dir=$2
+    all_AMINO_PFAM_MSA_file=$2
+    transmark_benchmark_dir=$3
 else
-    echo "Your command line contains less than two arguments, the first argument must be the file of all DNA MSAs, the second is the benchmark directory name  to create"
+    echo "Your command line contains less than three arguments, the first \
+argument must be the file of all DNA MSAs derived from Pfam, the second is \
+the file containing all amino MSAs from Pfam, and the third is the benchmark \
+ directory name  to create"
     exit 1
 fi
 
-echo "DNA MSA file is $all_DNA_MSA_file"
+#echo "DNA MSA file is $all_DNA_MSA_file"
 
 #echo before comment
 #: <<'COMMENT'
@@ -94,20 +98,20 @@ tblastn_path=$(pwd)/ncbi-blast/ncbi-blast-2.6.0+/bin/
 
 
 echo "generating the DNA background benchmark with decoy shuffled ORFs inserted into the background"
-${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile  -N 10 -L 100000000 -R 10 -E 10 --maxtrain 30 --maxtest 20  -D $all_AMINO_PFAM_MSA_file transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
 
 #one large test background sequence
-#${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D ../Pfam-A.v27.seed transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+#${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D $all_AMINO_PFAM_MSA_file transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
 
 #one small test bachground sequence
-#${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.75 -N 1 -L 1000000 -R 10 -E 10 --maxtrain 30 --maxtest 20 -D ../Pfam-A.v27.seed transmarkORFandDNA ../150_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+#${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.75 -N 1 -L 1000000 -R 10 -E 10 --maxtrain 30 --maxtest 20 -D all_AMINO_PFAM_MSA_file transmarkORFandDNA ../150_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
 
 echo "creating a DB for tblastn to use"
 ${tblastn_path}/makeblastdb -dbtype nucl -in transmarkORFandDNA.fa
 
 
 echo "creating the file that has the amino acid MSAs that have the sequences will be used as query sequences against the background sequences"
-${transmarkpath}/build_protein_training_seeds.pl transmarkAminoAcid.msa transmarkORFandDNA.msa ../Pfam-A.v27.seed
+${transmarkpath}/build_protein_training_seeds.pl transmarkAminoAcid.msa transmarkORFandDNA.msa $all_AMINO_PFAM_MSA_file
 
 echo "creating the HMMs to use as queries in phmmert from the amino acid MSAs"
 ${phmmert_path}/hmmbuild transmarkAminoAcid.hmm transmarkAminoAcid.msa
