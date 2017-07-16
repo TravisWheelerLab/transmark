@@ -25,7 +25,9 @@
 
 #create and run the benchmark:
 #>create-benchmark.sh <all DNA PFam alignments file> <all MSA PFam alignments file> <path to a directory that will be created for results>
->create-benchmark.sh all_DNA_PFam_alignments.stk ../Pfam-A.v27.seed /home/ubuntu/my_benchmark
+#Be sure to use fully qualified paths when specifying the MSA files and results directory
+>create-benchmark.sh /home/ubuntu/benchmark/reference_files/all_DNA_PFam_alignments.stk
+/home/ubuntu/benchmark/reference_files/Pfam-A.v27.seed /home/ubuntu/benchmark/my_benchmark_results
 
 # cd into results dir and run the create-plots.sh script
 >cd /home/ubuntu/my_benchmark
