@@ -76,12 +76,12 @@ esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst > 7362_alignme
 #this is becuase the all_filtered_ORF_alignments.stk file erroneously has the '.stk' suffix at the end of the alignment names
 #esl-afetch -f  all_filtered_ORF_alignments.stk 7362_ali_names.lst | awk ' {where = match($0, /#=GF ID /); if (where !=0) {split($3, basename, "."); $3 =  basename[1]; print} else {print}}' > 7362_alignments.stk
 
+echo "making the benchmark directory $transmark_benchmark_dir"
+mkdir $transmark_benchmark_dir
 
 
 #COMMENT
 
-echo "making the benchmark directory $transmark_benchmark_dir"
-mkdir $transmark_benchmark_dir
 echo "cd'ing into the benchmark directory $transmark_benchmark_dir"
 cd $transmark_benchmark_dir
 
@@ -104,7 +104,7 @@ ${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile  -N 10 -L 10
 #${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.2  -N 1 -L 100000000  -R 10 -E 10 --maxtrain 30 --maxtest 20  -D $all_AMINO_PFAM_MSA_file transmarkORFandDNA ../7362_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
 
 #one small test bachground sequence
-#${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.75 -N 1 -L 1000000 -R 10 -E 10 --maxtrain 30 --maxtest 20 -D all_AMINO_PFAM_MSA_file transmarkORFandDNA ../150_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
+#${transmarkpath}/rmark/rmark-create --tfile transmarkORFandDNAtfile -X 0.75 -N 1 -L 1000000 -R 10 -E 10 --maxtrain 30 --maxtest 20 -D $all_AMINO_PFAM_MSA_file transmarkORFandDNA ../150_alignments.stk ${tblastn_path} ${esl_miniapps_path} ${transmarkpath}/rmark/rmark3-bg.hmm
 
 echo "creating a DB for tblastn to use"
 ${tblastn_path}/makeblastdb -dbtype nucl -in transmarkORFandDNA.fa
